@@ -1,0 +1,328 @@
+---
+title: "Clean Data"
+author: "Shea Conaway"
+date: "11/18/2021"
+output: github_document
+---
+
+```{r, warning = FALSE, message = FALSE}
+# packages
+library(dplyr)
+library(readr)
+library(lubridate)
+library(stringr)
+library(tidyr)
+library(geodist)
+```
+
+```{r, warning = FALSE}
+# import data
+data <- read_csv('../data_processing/processed_data.csv',show_col_types = FALSE)
+```
+
+```{r}
+# review variable names
+names(data)
+
+# create cleaning dataset
+nashclean <- data
+
+# turn off scientific notation
+options(scipen = 100)
+```
+
+```{r}
+# initial data count
+count(nashclean) # 43,139
+```
+
+```{r}
+# observations to drop by value
+# values must be correct for valid analysis 
+
+# drop wrong home status
+nashclean %>% count(home_status)
+nashclean <- nashclean %>% filter(home_status %in% c('SOLD','RECENTLY_SOLD'))
+# 42,285
+
+# drop wrong home types
+nashclean %>% count(home_type)
+nashclean <- nashclean %>% filter(home_type %in% c('CONDO','SINGLE_FAMILY','TOWNHOUSE'))
+# 38,682
+
+# wrong city/county
+nashclean <- nashclean %>% mutate(address_city = str_to_title(address_city))
+nashclean %>% count(address_city)
+nashclean <- nashclean %>% filter(address_city %in% c('Antioch','Brentwood','Goodlettsville','Hermitage','Joelton','Madison','Nashville','Old Hickory','Whites Creek'))
+# 38,486
+
+# state, all tennessee
+
+# street address, none missing
+
+# wrong zip code
+nashclean %>% count(address_zipcode)
+nashclean <- nashclean %>% filter(address_zipcode %in% c(37013,37027,37072,37076,37115,37138,37201,37203,37204,37205,37206,37207,37208,37209,37210,37211,37212,37214,37215,37216,37217,37218,37219,37220,37221))
+# 38,045
+
+# latitude/longitude, none missing
+summary(nashclean$latitude)
+summary(nashclean$longitude)
+```
+
+```{r}
+# bathrooms, bedrooms, living area
+# values must be correct for valid analysis 
+# International Residential Building Code
+
+nashclean <- 
+  nashclean %>% 
+  filter(!is.na(bathrooms)) %>%
+  filter(bathrooms >= 1) %>%
+  filter(!is.na(bedrooms)) %>%
+  filter(bedrooms >= 1) %>%
+  filter(!is.na(living_area)) %>%
+  filter(living_area >= (75*bathrooms + 150*bedrooms + 250)) %>% 
+  filter((living_area/(bathrooms + bedrooms)) < 750) %>%
+  filter(between((bedrooms - bathrooms),-1,5))
+
+# 37,051
+```
+
+
+```{r}
+# date sold fix and clean
+# logical price history
+# values must be correct for valid analysis 
+
+nashclean <-
+  nashclean %>%
+  filter(price_history_0_event == 'Sold') %>%
+  mutate(date_sold = price_history_0_date)
+
+# 34,639
+```
+
+
+```{r}
+# price fix and clean
+# remove unreasonable prices
+# remove prices beyond scope of analysis
+
+# minimum price $10,000
+nashclean <-
+  nashclean %>%
+  filter(price >= 10000)
+
+nashclean <-
+  nashclean %>%
+  filter(price < quantile(nashclean$price,0.975))
+
+# 33,708
+```
+
+```{r}
+# year built
+
+nashclean <-
+  nashclean %>%
+  filter(!is.na(year_built)) %>%
+  filter(year_built >= 1900)
+
+# 33,452
+```
+
+```{r}
+# house_age transformation
+nashclean <-
+  nashclean %>%
+  mutate(age = year(date_sold) - year_built) %>%
+  filter(age >= 0)
+
+# 33,420
+```
+
+```{r}
+# price_sqft transformation
+nashclean <-
+  nashclean %>%
+  mutate(price_sqft = price/living_area)
+
+# remove unreasonable prices_sqft
+nashclean <-
+  nashclean %>%
+  filter(price_sqft > quantile(nashclean$price_sqft,0.0125)) %>%
+  filter(price_sqft < quantile(nashclean$price_sqft,0.9875))
+
+# 32,584
+```
+
+```{r}
+# lot size
+nashclean <- 
+nashclean %>%
+  filter(!is.na(lot_size)) %>%
+  filter(lot_size < quantile(nashclean$lot_size,0.95, na.rm = TRUE))
+
+# 29,028
+```
+
+
+```{r}
+# distance_downtown
+# longitude, latitude -86.784035,36.165526 (TN State Capitol)
+
+# initialize
+nashclean <- nashclean %>% mutate(downtown_dist = 0)
+
+# calculate distances
+for (i in 1:nrow(nashclean)) {
+  nashclean$downtown_dist[i] <- 
+    geodist_vec(nashclean$longitude[i]
+                ,nashclean$latitude[i]
+                ,-86.784035
+                ,36.165526
+                ,paired = TRUE)
+  }
+
+# convert to miles
+nashclean <-
+  nashclean %>%
+  mutate(downtown_dist = (downtown_dist/1000)*0.621371)
+```
+
+```{r}
+# date_listed / days_on_market / date_sold_previous
+
+# import price history data
+zprice <- read_csv('../data_processing/price_tax_history.csv',show_col_types = FALSE)
+
+# remove tax history and rental info
+zprice <-
+  zprice %>%
+  select(-matches('tax_history')) %>%
+  select(-matches('rental'))
+
+# initialize
+zprice <-
+  zprice %>%
+  mutate(date_listed = as.Date(0, origin = '1900-01-01')
+         ,date_sold_previous = as.Date(0, origin = '1900-01-01'))
+
+# loop over all rows
+for (row in 1:nrow(zprice)) {
+
+  # loop over all columns
+  for (i in 25:1) {
+  
+    # column location to search for listed date
+    col = i*3 +2
+    
+    # replace null
+    if (is.na(zprice[row,col+1])) {zprice[row,col+1] <- 'Skip'}
+    
+    # pull date if listed event
+    if (zprice[row,col+1] == 'Listed for sale') { # date_listed
+      zprice[row,92] <- zprice[row,col]
+    } else if (zprice[row,col+1] == 'Sold') { # date_sold_previous
+      zprice[row,93] <- zprice[row,col]
+    }
+  }
+}
+
+# remove placeholder values
+zprice$date_sold_previous[zprice$date_sold_previous == as.Date('1900-01-01')] <- NA
+zprice$date_listed[zprice$date_listed == as.Date('1900-01-01')] <- NA
+
+# remove price history
+zprice <-
+  zprice %>%
+  select(-matches('price_history'))
+
+# join to clean data
+nashclean <- 
+  nashclean %>%
+  left_join(zprice, by = 'zpid')
+```
+
+```{r}
+# valid listed dates - shouldn't be before previous sale
+nashclean$date_listed[nashclean$date_listed <= nashclean$date_sold_previous] <- NA
+
+# days_on_market
+nashclean <- 
+  nashclean %>% 
+  mutate(days_on_market = as.numeric(date_sold - date_listed))
+
+# keep values between 0 and 95th percentile
+# too many values to drop altogether
+nashclean$days_on_market[nashclean$days_on_market > quantile(nashclean$days_on_market,0.95, na.rm = TRUE)] <- NA
+nashclean$days_on_market[nashclean$days_on_market < 0] <- NA
+```
+
+
+```{r}
+# zip code neighborhood names
+
+# source: https://www.nashvillehomeviewer.com/nashville-zip-codes/
+address_zipcode <-c(37201,37203,37204,37205,37206,37207,37208,37209,37210,37211,37212,37214,37215,37216,37217,37218,37219,37220,37221,37013,37076,37115,37138,37072,37027)
+
+neighborhood <-
+c('Downtown','Wedgewood / Edgehill / Westend / The Gulch','12 South / Belmont / Green Hills / Oak Hill / Edgehill','Belle Meade / West Meade / West End','East Nashville','North Nashville / Dickerson Pike East Nashville Area','Germantown','Sylvan Park / Sylvan Heights / The Nations','South Nashville / Sterling Heights / Woodbine','Crieve Hall / Bradford Hills / Cane Ridge','Music Row / Vanderbilt / Hillsboro Village / Belmont','Donelson / Airport','Green Hills / Forest Hills / Belle Meade','Inglewood','Edge O Lake / Priest Lake','Bordeaux','Downtown','Oak Hill / Crieve Hall / North Brentwood','Bellevue','Antioch / Cane Ridge','Hermitage','Madison','Old Hickory','Goodlettsville','Brentwood')
+
+neighborhoods <- cbind.data.frame(address_zipcode,neighborhood)
+
+nashclean <-
+  nashclean %>%
+  left_join(neighborhoods, by = 'address_zipcode')
+```
+
+```{r}
+# remove price history
+nashclean <- nashclean %>% select(-matches('price_history'))
+
+# reorder variables
+nashclean <-
+  nashclean %>%
+  select(zpid
+         ,price
+         ,price_sqft
+         ,bedrooms
+         ,bathrooms
+         ,living_area
+         ,home_type
+         ,date_sold
+         ,date_listed
+         ,days_on_market
+         ,date_sold_previous
+         ,age
+         ,year_built
+         ,description
+         ,photo_count
+         ,lot_size
+         ,downtown_dist
+         ,longitude
+         ,latitude
+         ,neighborhood
+         ,address_state
+         ,address_city
+         ,address_zipcode
+         ,address_street
+         ,parcel_id
+         ,url
+         ,favorite_count
+         ,page_view_count
+         ,home_status)
+
+# write file
+write_csv(nashclean,'cleaned_data.csv')
+```
+
+
+
+
+
+
+
+
+

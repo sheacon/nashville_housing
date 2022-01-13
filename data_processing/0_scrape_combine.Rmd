@@ -1,0 +1,79 @@
+---
+title: "process_raw_data"
+author: "Shea Conaway"
+date: "11/12/2021"
+output: html_document
+---
+
+```{r, message = FALSE, warning = FALSE}
+### packages
+library(readr)
+library(plyr)
+library(dplyr)
+library(janitor)
+```
+
+```{r, message = FALSE, warning = FALSE}
+### import data
+
+# unzip compressed raw csv files
+unzip('../data_raw/scrape_1/dataset_my-task_2021-11-11_19-03-04-032.csv.zip')
+unzip('../data_raw/scrape_2/dataset_my-task_2021-11-12_00-27-41-655.csv.zip')
+unzip('../data_raw/scrape_3/dataset_my-task_2021-11-12_02-56-55-691.csv.zip')
+
+# import raw csv files and clean names
+scrape_1 <- clean_names(read_csv('dataset_my-task_2021-11-11_19-03-04-032.csv',show_col_types = FALSE))
+scrape_2 <- clean_names(read_csv('dataset_my-task_2021-11-12_00-27-41-655.csv',show_col_types = FALSE))
+scrape_3 <- clean_names(read_csv('dataset_my-task_2021-11-12_02-56-55-691.csv',show_col_types = FALSE))
+
+# delete uncompressed raw csv files
+unlink('dataset_my-task_2021-11-11_19-03-04-032.csv')
+unlink('dataset_my-task_2021-11-12_00-27-41-655.csv')
+unlink('dataset_my-task_2021-11-12_02-56-55-691.csv')
+```
+
+```{r}
+### combine three scrape attempts to maximize observation capture
+
+# create combined dataframe of all three scrape attempts
+scrape_all <- rbind.fill(scrape_1,scrape_2,scrape_3)
+
+# unload separate dataframes
+rm(scrape_1,scrape_2,scrape_3)
+
+# all observations have zpid (zillow id)
+scrape_all %>% filter(is.null(zpid)) # 0
+
+# unique count
+scrape_all %>%
+  count(zpid) %>% 
+  arrange(desc(n)) # 43,139 rows
+
+# keep one observation for each zpid
+scrape_distinct <-
+  scrape_all %>%
+  group_by(zpid) %>%
+  mutate(duplicate = row_number()) %>%
+  ungroup(zpid) %>%
+  filter(duplicate == 1) %>%
+  select(-duplicate)
+
+# confirm one observation per zpid and overall count
+scrape_distinct %>%
+  count(zpid) %>% 
+  arrange(desc(n)) # 43,139
+```
+
+```{r}
+### save combined file
+
+# output csv file
+write_csv(scrape_distinct,'scrape_combined.csv')
+
+# compress csv file
+zip(zipfile = 'scrape_combined.csv.zip', files = 'scrape_combined.csv')
+
+# delete csv file
+unlink('scrape_combined.csv')
+```
+

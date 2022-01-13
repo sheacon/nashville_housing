@@ -1,0 +1,148 @@
+---
+title: "Analyze trasformed variables"
+author: "Shea Conaway"
+output: github_document
+---
+```{r, message = FALSE, warning = FALSE}
+# packages
+library(tidyverse)
+library(ggcorrplot)
+library(scales)
+```
+
+```{r}
+# load data
+data <- read_csv("../data_clean/cleaned_data.csv", show_col_types = FALSE)
+```
+
+# Price per square foot
+## price_sqft
+
+```{r}
+# correlation between "living_area" and "price"
+corr_sqft <- round(cor(data$living_area, data$price),2)
+
+# scatter plot of "living_area" and "price"
+ggplot(data, aes(x = living_area, y = price)) +
+  geom_point(alpha = 0.15, color = "gray50") +
+  geom_smooth(formula = y ~ x, method = 'lm', se = FALSE, color = 'gray28', size = 1) +
+  labs(title = "Price by Living Area", y = "Price", x = "Living Area (sqft)") +
+  annotate('text',label = paste('Correlation Coefficient', corr_sqft, sep = '\n'), x = 6000, y = 250000) +
+  scale_y_continuous(name = 'Price', labels = dollar_format()) +
+  scale_x_continuous(labels = comma) +
+  theme_minimal()
+```
+
+```{r}
+# Calculate median values
+round(c(median(data$living_area),median(data$price),median(data$price_sqft)))
+```
+
+```{r}
+# Calculate percentiles
+round(c(quantile(data$living_area, 0.05),quantile(data$price, 0.05),quantile(data$price_sqft, 0.05)))
+round(c(quantile(data$living_area, 0.95),quantile(data$price, 0.95),quantile(data$price_sqft, 0.95)))
+``` 
+
+```{r}
+# living_area distribution
+ggplot(data, aes(x = living_area)) + 
+  geom_density(fill = "firebrick", alpha = 0.5) + 
+  geom_vline(xintercept = median(data$living_area), size= 0.5) +
+  geom_vline(xintercept = quantile(data$living_area, 0.95), size= 1, linetype="dotted") +
+  labs(title = "Living Area (Square Footage) Distribution"
+       ,x = 'Living Area (sqft)'
+       ,y = 'Density') +
+  scale_x_continuous(labels = comma) +
+  theme_minimal()
+
+# price distribution
+ggplot(data, aes(x = price)) + 
+  geom_density(fill = "dodgerblue3", alpha = 0.5) + 
+  geom_vline(xintercept = median(data$price), size= 0.5) +
+  geom_vline(xintercept = quantile(data$price, 0.95), size= 1, linetype="dotted") +
+  labs(title = "Price Distribution"
+       ,x = 'Price'
+       ,y = 'Density') +
+  scale_x_continuous(labels = comma) +
+  theme_minimal()
+
+# price_sqft distribution
+ggplot(data, aes(x = price_sqft)) + 
+  geom_density(fill = "gray20", alpha = 0.5) + 
+  geom_vline(xintercept = median(data$price_sqft), size= 0.5) +
+  geom_vline(xintercept = quantile(data$price_sqft, 0.95), size= 1,linetype="dotted") +
+  labs(title = "Price per Square Foot Distribution"
+       ,x = 'Price per Square Foot'
+       ,y = 'Density') +
+  theme_minimal()
+```
+
+# Age
+## age
+
+```{r}
+# age distribution
+round(c(median(data$age),quantile(data$age, 0.05),quantile(data$age, 0.95)))
+
+ggplot(data, aes(x = age)) + 
+  geom_density(fill = "gray20", alpha = 0.5) + 
+  geom_vline(xintercept = median(data$age), size= 0.5) +
+  geom_vline(xintercept = quantile(data$age, 0.95), size= 1,linetype="dotted") +
+  labs(title = "House Age"
+       ,x = 'Age (years)'
+       ,y = 'Density') +
+  theme_minimal()
+```
+
+# Days on Market
+## days_on_market
+
+```{r, message = FALSE, warning = FALSE}
+# Days on market distribution
+round(c(median(data$days_on_market, na.rm = TRUE),quantile(data$days_on_market, 0.05, na.rm = TRUE),quantile(data$days_on_market, 0.95, na.rm = TRUE)))
+
+ggplot(data, aes(x = days_on_market)) + 
+  geom_density(fill = "gray20", alpha = 0.5) + 
+  geom_vline(xintercept = median(data$days_on_market, na.rm = TRUE), size = 0.5) +
+  geom_vline(xintercept = quantile(data$days_on_market, 0.95, na.rm = TRUE), size = 1, linetype = "dotted") +
+  labs(title = "Days on Market"
+       ,x = 'Days on Market'
+       ,y = 'Density') +
+  theme_minimal()
+```
+
+# Distance from Downtown
+## downtown_dist
+
+```{r}
+# take a look at the distribution of the longitude and latitude
+
+ggplot(data, aes(x = longitude)) + 
+  geom_density(fill = "gray20", alpha = 0.5) + 
+  labs(title = "Longitude"
+       ,x = 'Longitude'
+       ,y = 'Density') +
+  theme_minimal()
+
+ggplot(data, aes(x = latitude)) + 
+  geom_density(fill = "gray20", alpha = 0.5) + 
+  labs(title = "Latitude"
+       ,x = 'Latitude'
+       ,y = 'Density') +
+  theme_minimal()
+```
+```{r}
+# downtown_dist distribution
+round(c(median(data$downtown_dist),quantile(data$downtown_dist, 0.05),quantile(data$downtown_dist, 0.95)))
+
+ggplot(data, aes(x = downtown_dist)) + 
+  geom_density(fill = "gray20", alpha = 0.5) + 
+  geom_vline(xintercept = median(data$downtown_dist), size= 0.5) +
+  geom_vline(xintercept = quantile(data$downtown_dist, 0.95), size= 1,linetype="dotted") +
+  labs(title = "Distance from Downtown"
+       ,x = 'Downtown from Distance (miles)'
+       ,y = 'Density') +
+  theme_minimal()
+```
+

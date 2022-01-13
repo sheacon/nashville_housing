@@ -1,0 +1,132 @@
+---
+title: "1_process_data"
+author: "Shea Conaway"
+date: "11/12/2021"
+output: github_document
+---
+
+```{r}
+### packages
+library(dplyr)
+library(readr)
+library(tidyr)
+```
+
+```{r}
+### load data
+
+# decompress scrape file
+unzip('scrape_combined.csv.zip')
+
+# load data
+scrape_combined <- read_csv('scrape_combined.csv',show_col_types = FALSE)
+
+# delete uncompressed file
+unlink('scrape_combined.csv')
+```
+
+```{r}
+### identify and remove unneeded columns
+
+# names(scrape_combined)
+# head(scrape_combined)
+
+# collapse 242 photo link variables to a simple photo count
+scrape_combined <-
+  scrape_combined %>%
+  mutate(across(matches('photos_'),is.na)) %>%
+  mutate(photo_count = 242 - rowSums(across(matches('photos_'))), .before = photos_0) %>%
+  select(-contains('photos_'))
+
+# selection
+processed_data <-
+  scrape_combined %>%
+  mutate(address_street = address_street_address, .after = address_street_address) %>%
+  # specific variables to remove
+  select(-c(address_street_address # redundant
+            ,address_community # empty
+            ,address_neighborhood # empty
+            ,address_subdivision # empty
+            ,address_unit_number # empty or redundant
+            ,building # empty
+            ,building_id # not useful
+            ,broker_id # empty
+            ,brokerage_name # not useful
+            ,coming_soon_on_market_date # irrelevant for sold
+            ,contingent_listing_type # empty
+            ,date_price_changed # mostly empty
+            ,hoa_fee # mostly empty
+            ,marketing_name # empty
+            ,new_construction_type # empty
+            ,abbreviated_address # redundant
+            ,price_change # mostly empty
+            ,price_history # empty
+            ,is_community_pillar # empty
+            ,is_featured # mostly empty
+            ,is_non_owner_occupied # mostly empty
+            ,is_preforeclosure_auction # empty
+            ,is_premier_builder # empty
+            ,is_recent_status_change # empty
+            ,is_zillow_owned # mostly empty
+            ,rent_zestimate # not wanted (don't model a model)
+            ,rental_applications_accepted_type
+            ,time_zone # unneeded
+            ,currency # unneeded
+            ,property_tax_rate # all the same
+            ,what_i_love
+            ,last_sold_price
+            ,is_listed_by_owner
+            ,days_on_zillow
+            ,tax_assessed_value
+            ,tax_assessed_year
+            )) %>% 
+  # prefixed variables to remove
+  select(-contains(c('mortgage_' # scraped rates don't reflect data at time of sale
+                     ,'move_in'  # unneeded
+                     ,'open_house'  # unneeded
+                     ,'listing_provider'  # unneeded
+                     ,'posting_contact'  # unneeded
+                     ,'buyer_agent'  # unneeded
+                     ,'seller_agent'  # unneeded
+                     ,'county_link'  # unneeded
+                     ,'_source'  # unneeded
+                     ,'_time'  # unneeded
+                     ,'primary_public_video' # unneeded
+                     ,'restimate' # not wanted (don't model a model)
+                     ,'solar_potential' # superfluous
+                     ,'tour_' # outdated
+                     ,'unassisted_showing' #unneeded
+                     ,'zestimate'# not wanted (don't model a model)
+                     )))
+```
+
+```{r}
+# store price and tax history in different file
+price_tax_history <-
+  processed_data %>%
+  select(zpid,matches(c('price_history','tax_history'))) %>%
+  select(-matches(c('price_per_square_foot','price_change_rate')))
+
+# remove price and tax history from main file
+processed_data <-
+  processed_data %>%
+  select(-matches(c('price_per_square_foot','price_change_rate'))) %>%
+  select(-matches(c('price_history_[1-9]','tax_history')))
+
+# zpid can be used to join data together if needed
+```
+
+```{r}
+# write files
+write_csv(price_tax_history,'price_tax_history.csv')
+write_csv(processed_data,'processed_data.csv')
+```
+
+
+
+
+
+
+
+
+

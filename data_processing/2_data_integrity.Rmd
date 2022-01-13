@@ -1,0 +1,50 @@
+---
+title: "2_data_integrity"
+author: "Shea Conaway"
+date: "11/18/2021"
+output: github_document
+---
+
+```{r, message = FALSE, warning = FALSE}
+# packages
+library(dplyr)
+library(readr)
+library(lubridate)
+```
+
+```{r, message = FALSE, warning = FALSE}
+# import data
+data_review <- read_csv('processed_data.csv')
+# price_tax_history <- read_csv('price_tax_history.csv')
+```
+
+```{r}
+# basic features
+dim(data_review)
+names(data_review)
+head(data_review)
+```
+
+
+```{r}
+# random sample of listing
+# zpid_sample <- data_review %>% pull(zpid) %>% sample(20)
+zpid_sample <- c(41056255,2072872420,41065842,41083769,41115366,41093874,41203543,41099652,41138098,59879348,41095334,41088072,2090088383,71265073,81061027,41067813,41139756,296613462,41091282,41110305)
+zpid_sample
+```
+
+```{r}
+listing_sample <-
+  data_review %>%
+  filter(zpid %in% zpid_sample) %>%
+  mutate(lot_size2 = lot_size/43560) %>%
+  select(zpid,address_street_address,address_zipcode,home_status,bedrooms,bathrooms,living_area,price,date_sold,description,home_type,lot_size,lot_size2,photo_count,year_built)
+
+listing_sample
+```
+
+```{r}
+# unusual price
+listing_sample %>% filter(zpid == 41110305)
+```
+
