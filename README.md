@@ -1,4 +1,7 @@
-# Research Topic
+# Exploratory Data Analysis
+This is an EDA exercise with no modeling
+
+## Research Topic
 - Primary topic: Nashville residential real estate
   - What are identifiable trends in sales and price?
 - Secondary topics:
