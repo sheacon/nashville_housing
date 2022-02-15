@@ -1,6 +1,8 @@
 # Exploratory Data Analysis
 This is an EDA exercise with no modeling
 
+[Report](https://github.com/sheacon/nashville_real_estate_eda/blob/main/final_report.pdf)
+
 ## Research Topic
 - Primary topic: Nashville residential real estate
   - What are identifiable trends in sales and price?
