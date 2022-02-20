@@ -5,7 +5,7 @@
 -  Cleaning
 
 ## Exploratory Data Analysis
-- EDA exercise to understand data, visualize trends, and identify potential features
+- Understand data, visualize trends, and identify potential features
 - [Report](https://github.com/sheacon/nashville_real_estate_eda/blob/main/final_report.pdf)
 
 ## Modeling (In Development)
