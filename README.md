@@ -1,6 +1,7 @@
 # Nashville Real Estate
 
 ## Machine Learning Project Steps
+
 [x] Look at the big picture.
 [x] Get the data.
 [x] Discover and visualize the data to gain insights.
