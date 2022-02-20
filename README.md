@@ -11,7 +11,7 @@
 - [ ] Present the solution.
 
 ## Data Collection and Preparation
--  Web scraping
+-  [Web scraping](https://github.com/sheacon/nashville_real_estate/blob/main/scrape.md)
 -  Cleaning
 
 ## Exploratory Data Analysis
