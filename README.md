@@ -1,15 +1,5 @@
 # Nashville Real Estate
 
-## Machine Learning Project Steps
-
-- [x] Look at the big picture.
-- [x] Get the data.
-- [x] Discover and visualize the data to gain insights.
-- [ ] Prepare the data for Machine Learning algorithms.
-- [ ] Select a model and train it.
-- [ ] Fine-tune the model.
-- [ ] Present the solution.
-
 ## Data Collection and Preparation
 -  [Web scraping](https://github.com/sheacon/nashville_real_estate/blob/main/scrape.md)
 -  Cleaning
