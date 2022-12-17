@@ -1,0 +1,150 @@
+---
+title: "Modeling"
+author: "Shea Conaway"
+output: github_document
+---
+
+```{r, message=FALSE}
+# packages
+library(dplyr)
+library(readr)
+library(ggplot2)
+```
+
+# Data
+
+```{r}
+# data
+df <- read_csv('../data/2_cleaned/cleaned_data.csv',show_col_types =FALSE)
+```
+
+- One-hot encode categorical variables
+
+```{r}
+# home type
+
+df$condo <- ifelse(df$home_type == 'CONDO', 1, 0)
+df$single_family <- ifelse(df$home_type == 'SINGLE_FAMILY', 1, 0)
+df$townhouse <- ifelse(df$home_type == 'TOWNHOUSE', 1, 0)
+```
+
+```{r}
+# neighborhood
+
+neighborhoods <- unique(df$neighborhood)
+num_hoods <- length(neighborhoods) # 24
+
+for(i in 1:num_hoods) {
+  new <- ifelse(df$neighborhood == neighborhoods[i], 1, 0)
+  df[ , ncol(df) + 1] <- new
+  colnames(df)[ncol(df)] <- paste0('neighborhood_', i) 
+  }
+
+var_hoods <- c()
+for(i in 1:num_hoods) {
+  var_hoods <- c(var_hoods,paste0('neighborhood_', i))
+}
+```
+
+```{r}
+var_hoods <- c()
+for(i in 1:num_hoods) {
+  var_hoods <- c(var_hoods,paste0('neighborhood_', i))
+}
+```
+
+
+```{r}
+# subset to desired variables
+df <- subset(df,select = -c(zpid
+                   ,price_sqft
+                   ,home_type
+                   ,date_sold
+                   ,date_listed
+                   ,days_on_market
+                   ,date_sold_previous
+                   ,age
+                   ,year_built
+                   ,description
+                   ,photo_count
+                   ,longitude
+                   ,latitude
+                   ,neighborhood
+                   ,address_state
+                   ,address_city
+                   ,address_zipcode
+                   ,address_street
+                   ,parcel_id
+                   ,url
+                   ,favorite_count
+                   ,page_view_count
+                   ,home_status))
+
+```
+
+
+```{r}
+# train/test split
+set.seed(20221217)
+row.number <- sample(1:nrow(df), 0.8*nrow(df))
+train = df[row.number,]
+test = df[-row.number,]
+dim(train)
+dim(test)
+```
+
+- Check for the distribution of response variable `price`
+- The following figure shows the three distributions of `price`
+  - original
+  - log transformation
+  - square root transformation
+- The original distribution is right skewed, as expected with prices. The log transformation does a decent job of normalizing, which is more appropriate for a linear model.
+
+```{r}
+##Explore the data.
+ggplot(train, aes(price)) + geom_density(fill="blue")
+ggplot(train, aes(log(price))) + geom_density(fill="blue")
+ggplot(train, aes(sqrt(price))) + geom_density(fill="blue")
+```
+
+# Model
+
+- First model isn't bad for not including neighborhood or home type
+
+```{r}
+# first model
+
+model1 = lm(log(price) ~ living_area + bedrooms + bathrooms + downtown_dist, data=train)
+summary(model1)
+par(mfrow=c(2,2))
+plot(model1)
+```
+
+Multiple R-squared:  0.7606. Not bad.
+
+```{r}
+# second model
+
+model2 = lm(log(price) ~ .-townhouse-neighborhood_24, data=train) # don't need last one-hots
+summary(model2)
+par(mfrow=c(2,2))
+plot(model2)
+```
+
+# Test
+
+```{r}
+# error
+pred1 <- predict(model2, newdata = test)
+rmse <- sqrt(sum((exp(pred1) - test$price)^2)/length(test$price))
+c(RMSE = rmse, R2=summary(model2)$r.squared)
+
+```
+
+```{r}
+# plot
+par(mfrow=c(1,1))
+plot(test$price, exp(pred1))
+
+```
+
