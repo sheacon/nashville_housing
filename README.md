@@ -2,7 +2,7 @@
 
 ## Data Collection and Preparation
 -  [Web scraping](https://github.com/sheacon/nashville_real_estate/blob/main/scrape.md)
--  Cleaning
+-  [Cleaning](https://github.com/sheacon/nashville_real_estate/blob/main/data/2_cleaned/clean_data.md)
 
 ## Exploratory Data Analysis
 - Understand data, visualize trends, and identify potential features
@@ -10,5 +10,5 @@
 
 ## Modeling (In Development)
 - What drives home prices?
-  - Linear regression
+  - [Linear regression](https://github.com/sheacon/nashville_real_estate/blob/main/modeling/modeling.md)
   - Tree-based
