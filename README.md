@@ -2,7 +2,7 @@
 
 ## Data Collection and Preparation
 -  [Web scraping](https://github.com/sheacon/nashville_real_estate/blob/main/scrape.md)
--  [Cleaning](https://github.com/sheacon/nashville_real_estate/blob/main/data/2_cleaned/clean_data.md)
+-  [Cleaning](https://github.com/sheacon/nashville_real_estate/blob/main/data/2_cleaned/clean_data.Rmd)
 
 ## Exploratory Data Analysis
 - Understand data, visualize trends, and identify potential features
