@@ -244,6 +244,7 @@ c(RMSE = rmse, R2=summary(model2)$r.squared)
 # plot
 par(mfrow=c(1,1))
 plot(test$price, exp(pred1))
+abline(coef = c(0, 1), c = 'red')
 ```
 
 ![](modeling_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
