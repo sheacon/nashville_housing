@@ -6,53 +6,37 @@ output: github_document
 
 ```{r, message=FALSE}
 # packages
-library(dplyr)
-library(readr)
-library(ggplot2)
+library(xgboost) #for fitting the xgboost model
+library(caret) # data prep and model fitting
 ```
 
 # Data
 
 ```{r}
 # data
-df <- read_csv('../data/2_cleaned/cleaned_data.csv',show_col_types =FALSE)
+df <- read.csv('../data/2_cleaned/cleaned_data.csv')
 ```
 
-- One-hot encode categorical variables
-
 ```{r}
+# one-hot encode categoricals
+
 # home type
-
+# default single family
+# encode condo or townhouse
 df$condo <- ifelse(df$home_type == 'CONDO', 1, 0)
-df$single_family <- ifelse(df$home_type == 'SINGLE_FAMILY', 1, 0)
 df$townhouse <- ifelse(df$home_type == 'TOWNHOUSE', 1, 0)
-```
 
-```{r}
 # neighborhood
-
+# default neighborhood 1 (Green Hills / Forest Hills / Belle Meade)
 neighborhoods <- unique(df$neighborhood)
 num_hoods <- length(neighborhoods) # 24
-
-for(i in 1:num_hoods) {
+# loop enconding
+for(i in 2:num_hoods) {
   new <- ifelse(df$neighborhood == neighborhoods[i], 1, 0)
   df[ , ncol(df) + 1] <- new
   colnames(df)[ncol(df)] <- paste0('neighborhood_', i) 
   }
-
-var_hoods <- c()
-for(i in 1:num_hoods) {
-  var_hoods <- c(var_hoods,paste0('neighborhood_', i))
-}
 ```
-
-```{r}
-var_hoods <- c()
-for(i in 1:num_hoods) {
-  var_hoods <- c(var_hoods,paste0('neighborhood_', i))
-}
-```
-
 
 ```{r}
 # subset to desired variables
@@ -82,71 +66,105 @@ df <- subset(df,select = -c(zpid
 
 ```
 
-
 ```{r}
 # train/test split
 set.seed(20221217)
-row.number <- sample(1:nrow(df), 0.8*nrow(df))
-train = df[row.number,]
-test = df[-row.number,]
+
+# 80/20
+parts = caret::createDataPartition(df$price, p = .8, list = F)
+train = df[parts, ]
+test = df[-parts, ]
+
 dim(train)
 dim(test)
 ```
 
-- Check for the distribution of response variable `price`
-- The following figure shows the three distributions of `price`
-  - original
-  - log transformation
-  - square root transformation
-- The original distribution is right skewed, as expected with prices. The log transformation does a decent job of normalizing, which is more appropriate for a linear model.
-
-```{r}
-##Explore the data.
-ggplot(train, aes(price)) + geom_density(fill="blue")
-ggplot(train, aes(log(price))) + geom_density(fill="blue")
-ggplot(train, aes(sqrt(price))) + geom_density(fill="blue")
-```
-
 # Model
 
-- First model isn't bad for not including neighborhood or home type
+## Linear Regression
+
+Linear regression models are well-understood and easily explained. They serve as a good baseline model in a regression task to gut-check more sophisticated approaches.
+
+### Train 
+
+The target variable distribution is right skewed, as expected with home prices. The log transformation does a decent job of normalizing, which is more appropriate for a linear model.
 
 ```{r}
-# first model
+d = density(train$price)
+plot(d, main = 'price')
+polygon(d, col='gray')
 
-model1 = lm(log(price) ~ living_area + bedrooms + bathrooms + downtown_dist, data=train)
-summary(model1)
-par(mfrow=c(2,2))
-plot(model1)
+d_log = density(log(train$price))
+plot(d_log, main = 'price')
+polygon(d_log, col='gray')
 ```
 
-Multiple R-squared:  0.7606. Not bad.
-
 ```{r}
-# second model
-
-model2 = lm(log(price) ~ .-townhouse-neighborhood_24, data=train) # don't need last one-hots
-summary(model2)
-par(mfrow=c(2,2))
-plot(model2)
+# linear model training
+model_lm = lm(log(price) ~ ., data=train)
+summary(model_lm)
 ```
 
-# Test
+## Test
 
 ```{r}
-# error
-pred1 <- predict(model2, newdata = test)
-rmse <- sqrt(sum((exp(pred1) - test$price)^2)/length(test$price))
-c(RMSE = rmse, R2=summary(model2)$r.squared)
+# linear regression prediction and error
+pred_lm <- predict(model_lm, newdata = test)
+rmse_lm <- sqrt(sum((exp(pred_lm) - test$price)^2)/length(test$price))
+rmse_lm
 
 ```
 
 ```{r}
 # plot
-par(mfrow=c(1,1))
-plot(test$price, exp(pred1))
+plot(test$price, exp(pred_lm))
 abline(coef = c(0, 1), c = 'red')
 ```
 
+## XGBoost
+
+XGBoost belongs to a class of models popular throughout many industries because of its performance on a variety problems. It is a decision-tree-based ensemble algorithm that uses the gradient boosting framework. Most boosting algorithms consist of iteratively learning weak classifiers to reduce residuals. A gradient-boosted trees model generalizes this method by allowing optimization of an arbitrary differentiable loss function.
+
+```{r}
+# additional xgboost data formatting
+
+# train
+train_x = data.matrix(train[, -1])
+train_y = train[,1]
+# test
+test_x = data.matrix(test[, -1])
+test_y = test[,1]
+# final format for xgboost
+xgb_train = xgb.DMatrix(data = train_x, label = train_y)
+xgb_test = xgb.DMatrix(data = test_x, label = test_y)
+```
+
+```{r}
+# xgboost training
+model_xgb = xgb.train(data = xgb_train, max.depth = 3, nrounds = 350)
+```
+
+```{r}
+# xgb prediction and error
+pred_xgb <- predict(model_xgb, newdata = test_x)
+rmse_xgb <- caret::RMSE(test_y, pred_xgb)
+rmse_xgb
+```
+
+```{r}
+# plot
+plot(test$price, pred_xgb)
+abline(coef = c(0, 1), c = 'red')
+```
+
+
+# Comparison
+
+XGBoost results in a 13% reduction in RMSE.
+
+```{r}
+# performance comparison
+1 - rmse_xgb/rmse_lm
+```
 
 
