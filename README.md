@@ -10,5 +10,4 @@
 
 ## Modeling (In Development)
 - What drives home prices?
-  - [Linear regression](https://github.com/sheacon/nashville_real_estate/blob/main/modeling/modeling.md)
-  - Tree-based
+- [Modeling Results](https://github.com/sheacon/nashville_real_estate/blob/main/modeling/modeling.md)
