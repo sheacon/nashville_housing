@@ -3,7 +3,7 @@
 House prices are a common project topic for data science learners. I've attempted to make this more interesting by collecting my own real-world data for my current city. This was an EDA-only project for an academic course that I've since expanded with predictive modeling.
 
 ## Data Collection and Preparation
--  [Web scraping](https://github.com/sheacon/nashville_real_estate/blob/main/scrape.md)
+-  [Web scraping](scrape.md)
 -  [Cleaning](https://github.com/sheacon/nashville_real_estate/blob/main/data/2_cleaned/clean_data.Rmd)
 
 ## Exploratory Data Analysis
