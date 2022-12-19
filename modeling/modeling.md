@@ -64,24 +64,12 @@ df <- subset(df,select = -c(zpid
 ```
 
 ``` r
-# train/test split
-set.seed(20221217)
-
-# 80/20
-parts = caret::createDataPartition(df$price, p = .8, list = F)
-train = df[parts, ]
-test = df[-parts, ]
-
-dim(train)
+# a little additional lot size cleaning
+df <- df[!df$lot_size == 0,]
+df <- df[!df$lot_size == 1,]
+# lot size should be at least as large as living area
+df$lot_size[df$lot_size < df$living_area] <- df$living_area[df$lot_size < df$living_area]
 ```
-
-    ## [1] 23224    31
-
-``` r
-dim(test)
-```
-
-    ## [1] 5804   31
 
 # Model
 
@@ -93,10 +81,11 @@ sophisticated approaches.
 
 The target variable distribution is right skewed, as expected with home
 prices. The log transformation does a decent job of normalizing, which
-is more appropriate for a linear model.
+is more appropriate for a linear model. Log transformations are also
+applied to the skewed features.
 
 ``` r
-d = density(train$price)
+d = density(df$price)
 plot(d, main = 'price')
 polygon(d, col='gray')
 ```
@@ -104,12 +93,40 @@ polygon(d, col='gray')
 ![](modeling_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
 
 ``` r
-d_log = density(log(train$price))
+d_log = density(log(df$price))
 plot(d_log, main = 'price')
 polygon(d_log, col='gray')
 ```
 
 ![](modeling_files/figure-gfm/unnamed-chunk-6-2.png)<!-- -->
+
+``` r
+# feature log transformations
+df$bedrooms <- log(df$bedrooms)
+df$bathrooms <- log(df$bathrooms)
+df$living_area <- log(df$living_area)
+df$lot_size <- log(df$lot_size)
+```
+
+``` r
+# train/test split
+set.seed(20221217)
+
+# 80/20
+parts = caret::createDataPartition(df$price, p = .8, list = F)
+train = df[parts, ]
+test = df[-parts, ]
+
+dim(train)
+```
+
+    ## [1] 23207    31
+
+``` r
+dim(test)
+```
+
+    ## [1] 5801   31
 
 ``` r
 # linear model training
@@ -123,47 +140,47 @@ summary(model_lm)
     ## 
     ## Residuals:
     ##      Min       1Q   Median       3Q      Max 
-    ## -1.35287 -0.12453  0.00719  0.13963  1.29593 
+    ## -1.26566 -0.12557  0.00309  0.13734  1.28286 
     ## 
     ## Coefficients:
-    ##                   Estimate Std. Error  t value Pr(>|t|)    
-    ## (Intercept)      1.242e+01  1.230e-02 1009.882  < 2e-16 ***
-    ## bedrooms         7.255e-03  2.811e-03    2.581  0.00985 ** 
-    ## bathrooms        1.050e-01  2.698e-03   38.940  < 2e-16 ***
-    ## living_area      2.684e-04  3.688e-06   72.771  < 2e-16 ***
-    ## lot_size         1.836e-06  2.095e-07    8.763  < 2e-16 ***
-    ## downtown_dist   -3.153e-02  1.045e-03  -30.165  < 2e-16 ***
-    ## condo           -9.817e-02  5.676e-03  -17.295  < 2e-16 ***
-    ## townhouse       -1.284e-01  6.814e-03  -18.847  < 2e-16 ***
-    ## neighborhood_2  -2.616e-01  1.068e-02  -24.493  < 2e-16 ***
-    ## neighborhood_3  -2.666e-01  1.245e-02  -21.418  < 2e-16 ***
-    ## neighborhood_4   7.441e-02  1.587e-02    4.688 2.78e-06 ***
-    ## neighborhood_5  -1.017e-01  1.020e-02   -9.974  < 2e-16 ***
-    ## neighborhood_6  -3.112e-01  1.184e-02  -26.281  < 2e-16 ***
-    ## neighborhood_7  -1.523e-01  1.349e-02  -11.294  < 2e-16 ***
-    ## neighborhood_8  -3.728e-01  1.094e-02  -34.059  < 2e-16 ***
-    ## neighborhood_9  -2.885e-01  1.430e-02  -20.178  < 2e-16 ***
-    ## neighborhood_10 -3.657e-01  1.234e-02  -29.640  < 2e-16 ***
-    ## neighborhood_11 -1.628e-01  1.286e-02  -12.660  < 2e-16 ***
-    ## neighborhood_12 -4.375e-01  1.207e-02  -36.255  < 2e-16 ***
-    ## neighborhood_13 -5.415e-01  1.546e-02  -35.015  < 2e-16 ***
-    ## neighborhood_14 -3.090e-01  1.335e-02  -23.142  < 2e-16 ***
-    ## neighborhood_15 -4.633e-01  1.319e-02  -35.129  < 2e-16 ***
-    ## neighborhood_16 -1.406e-01  1.106e-02  -12.709  < 2e-16 ***
-    ## neighborhood_17  2.918e-02  1.192e-02    2.447  0.01439 *  
-    ## neighborhood_18 -9.184e-02  1.079e-02   -8.510  < 2e-16 ***
-    ## neighborhood_19  1.147e-01  1.305e-02    8.791  < 2e-16 ***
-    ## neighborhood_20 -3.745e-01  1.132e-02  -33.079  < 2e-16 ***
-    ## neighborhood_21  1.097e-01  1.414e-02    7.760 8.86e-15 ***
-    ## neighborhood_22 -4.128e-01  4.270e-02   -9.669  < 2e-16 ***
-    ## neighborhood_23 -5.162e-03  1.767e-02   -0.292  0.77016    
-    ## neighborhood_24  1.540e-02  4.447e-02    0.346  0.72908    
+    ##                  Estimate Std. Error t value Pr(>|t|)    
+    ## (Intercept)      8.436791   0.049452 170.604  < 2e-16 ***
+    ## bedrooms        -0.023794   0.008397  -2.834  0.00461 ** 
+    ## bathrooms        0.182758   0.005995  30.483  < 2e-16 ***
+    ## living_area      0.600369   0.007249  82.819  < 2e-16 ***
+    ## lot_size         0.029067   0.002456  11.835  < 2e-16 ***
+    ## downtown_dist   -0.034930   0.001019 -34.284  < 2e-16 ***
+    ## condo           -0.065813   0.006350 -10.365  < 2e-16 ***
+    ## townhouse       -0.099901   0.007170 -13.934  < 2e-16 ***
+    ## neighborhood_2  -0.327735   0.010262 -31.935  < 2e-16 ***
+    ## neighborhood_3  -0.314266   0.012059 -26.061  < 2e-16 ***
+    ## neighborhood_4   0.018517   0.015342   1.207  0.22746    
+    ## neighborhood_5  -0.160811   0.009814 -16.386  < 2e-16 ***
+    ## neighborhood_6  -0.383310   0.011361 -33.738  < 2e-16 ***
+    ## neighborhood_7  -0.189173   0.013010 -14.541  < 2e-16 ***
+    ## neighborhood_8  -0.435554   0.010520 -41.404  < 2e-16 ***
+    ## neighborhood_9  -0.338777   0.013775 -24.594  < 2e-16 ***
+    ## neighborhood_10 -0.425866   0.011858 -35.915  < 2e-16 ***
+    ## neighborhood_11 -0.212172   0.012399 -17.112  < 2e-16 ***
+    ## neighborhood_12 -0.482208   0.011643 -41.415  < 2e-16 ***
+    ## neighborhood_13 -0.612347   0.014824 -41.307  < 2e-16 ***
+    ## neighborhood_14 -0.332129   0.012948 -25.651  < 2e-16 ***
+    ## neighborhood_15 -0.529689   0.012725 -41.625  < 2e-16 ***
+    ## neighborhood_16 -0.207629   0.010640 -19.514  < 2e-16 ***
+    ## neighborhood_17 -0.021011   0.011557  -1.818  0.06907 .  
+    ## neighborhood_18 -0.166906   0.010382 -16.077  < 2e-16 ***
+    ## neighborhood_19  0.064088   0.012731   5.034 4.84e-07 ***
+    ## neighborhood_20 -0.435233   0.010900 -39.931  < 2e-16 ***
+    ## neighborhood_21  0.062042   0.013626   4.553 5.31e-06 ***
+    ## neighborhood_22 -0.462511   0.039612 -11.676  < 2e-16 ***
+    ## neighborhood_23 -0.072716   0.016698  -4.355 1.34e-05 ***
+    ## neighborhood_24  0.091196   0.041941   2.174  0.02969 *  
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
-    ## Residual standard error: 0.2247 on 23193 degrees of freedom
-    ## Multiple R-squared:  0.7606, Adjusted R-squared:  0.7603 
-    ## F-statistic:  2456 on 30 and 23193 DF,  p-value: < 2.2e-16
+    ## Residual standard error: 0.2187 on 23176 degrees of freedom
+    ## Multiple R-squared:  0.7721, Adjusted R-squared:  0.7718 
+    ## F-statistic:  2617 on 30 and 23176 DF,  p-value: < 2.2e-16
 
 ``` r
 # linear regression prediction and error
@@ -172,7 +189,7 @@ rmse_lm <- sqrt(sum((exp(pred_lm) - test$price)^2)/length(test$price))
 rmse_lm
 ```
 
-    ## [1] 97979.64
+    ## [1] 93424.88
 
 ``` r
 # plot
@@ -180,7 +197,7 @@ plot(test$price, exp(pred_lm))
 abline(coef = c(0, 1), c = 'red')
 ```
 
-![](modeling_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+![](modeling_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
 
 ## XGBoost
 
@@ -218,7 +235,7 @@ rmse_xgb <- caret::RMSE(test_y, pred_xgb)
 rmse_xgb
 ```
 
-    ## [1] 85377
+    ## [1] 87721.23
 
 ``` r
 # plot
@@ -226,15 +243,15 @@ plot(test$price, pred_xgb)
 abline(coef = c(0, 1), c = 'red')
 ```
 
-![](modeling_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
+![](modeling_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
 
 # Comparison
 
-XGBoost results in a 13% reduction in RMSE.
+XGBoost results in a 6% reduction in RMSE.
 
 ``` r
 # performance comparison
 1 - rmse_xgb/rmse_lm
 ```
 
-    ## [1] 0.1286252
+    ## [1] 0.06105061

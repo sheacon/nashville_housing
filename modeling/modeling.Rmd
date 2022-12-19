@@ -67,6 +67,40 @@ df <- subset(df,select = -c(zpid
 ```
 
 ```{r}
+# a little additional lot size cleaning
+df <- df[!df$lot_size == 0,]
+df <- df[!df$lot_size == 1,]
+# lot size should be at least as large as living area
+df$lot_size[df$lot_size < df$living_area] <- df$living_area[df$lot_size < df$living_area]
+```
+
+# Model
+
+## Linear Regression
+
+Linear regression models are well-understood and easily explained. They serve as a good baseline model in a regression task to gut-check more sophisticated approaches.
+
+The target variable distribution is right skewed, as expected with home prices. The log transformation does a decent job of normalizing, which is more appropriate for a linear model. Log transformations are also applied to the skewed features.
+
+```{r}
+d = density(df$price)
+plot(d, main = 'price')
+polygon(d, col='gray')
+
+d_log = density(log(df$price))
+plot(d_log, main = 'price')
+polygon(d_log, col='gray')
+```
+
+```{r}
+# feature log transformations
+df$bedrooms <- log(df$bedrooms)
+df$bathrooms <- log(df$bathrooms)
+df$living_area <- log(df$living_area)
+df$lot_size <- log(df$lot_size)
+```
+
+```{r}
 # train/test split
 set.seed(20221217)
 
@@ -79,23 +113,6 @@ dim(train)
 dim(test)
 ```
 
-# Model
-
-## Linear Regression
-
-Linear regression models are well-understood and easily explained. They serve as a good baseline model in a regression task to gut-check more sophisticated approaches.
-
-The target variable distribution is right skewed, as expected with home prices. The log transformation does a decent job of normalizing, which is more appropriate for a linear model.
-
-```{r}
-d = density(train$price)
-plot(d, main = 'price')
-polygon(d, col='gray')
-
-d_log = density(log(train$price))
-plot(d_log, main = 'price')
-polygon(d_log, col='gray')
-```
 
 ```{r}
 # linear model training
@@ -156,7 +173,7 @@ abline(coef = c(0, 1), c = 'red')
 
 # Comparison
 
-XGBoost results in a 13% reduction in RMSE.
+XGBoost results in a 6% reduction in RMSE.
 
 ```{r}
 # performance comparison
