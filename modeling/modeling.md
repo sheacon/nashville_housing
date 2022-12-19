@@ -341,6 +341,14 @@ abline(coef = c(0, 1), c = 'red')
 
     ## [1] 0.1161382
 
+## SAINT (Work in Progress)
+
+### Self-Attention and Intersample Attention Transformer
+
+-   A hybrid deep learning approach to solving tabular data problems
+-   SAINT performs attention over both rows and columns and includes an
+    enhanced embedding method
+
 # Test
 
 Once we’ve settled on our modeling decisions, we can train our test
