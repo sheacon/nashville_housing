@@ -13,4 +13,4 @@ House prices are a common project topic for data science learners. I've attempte
 
 ## Modeling
 - How accurately can prices be predicted with these features?
-- [Modeling Results](https://github.com/sheacon/nashville_real_estate/blob/main/modeling/modeling.md)
+- [Modeling Results](modeling/modeling.md)
