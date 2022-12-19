@@ -8,6 +8,6 @@
 - Understand data, visualize trends, and identify potential features
 - [Report](https://github.com/sheacon/nashville_real_estate_eda/blob/main/final_report.pdf)
 
-## Modeling (In Development)
-- What drives home prices?
+## Modeling
+- How accurately can prices be predicted with these features?
 - [Modeling Results](https://github.com/sheacon/nashville_real_estate/blob/main/modeling/modeling.md)
