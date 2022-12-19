@@ -91,8 +91,6 @@ Linear regression models are well-understood and easily explained. They
 serve as a good baseline model in a regression task to gut-check more
 sophisticated approaches.
 
-### Train
-
 The target variable distribution is right skewed, as expected with home
 prices. The log transformation does a decent job of normalizing, which
 is more appropriate for a linear model.
@@ -166,8 +164,6 @@ summary(model_lm)
     ## Residual standard error: 0.2247 on 23193 degrees of freedom
     ## Multiple R-squared:  0.7606, Adjusted R-squared:  0.7603 
     ## F-statistic:  2456 on 30 and 23193 DF,  p-value: < 2.2e-16
-
-## Test
 
 ``` r
 # linear regression prediction and error
