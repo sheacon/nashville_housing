@@ -49,8 +49,8 @@ df <- subset(df,select = -c(zpid
                    ,year_built
                    ,description
                    ,photo_count
-                   ,longitude
-                   ,latitude
+                   #,longitude
+                   #,latitude
                    ,neighborhood
                    ,address_state
                    ,address_city
@@ -120,13 +120,13 @@ test = df[-parts, ]
 dim(train)
 ```
 
-    ## [1] 23207    31
+    ## [1] 23207    33
 
 ``` r
 dim(test)
 ```
 
-    ## [1] 5801   31
+    ## [1] 5801   33
 
 ``` r
 # linear model training
@@ -140,47 +140,49 @@ summary(model_lm)
     ## 
     ## Residuals:
     ##      Min       1Q   Median       3Q      Max 
-    ## -1.26566 -0.12557  0.00309  0.13734  1.28286 
+    ## -1.28740 -0.12458  0.00355  0.13620  1.25628 
     ## 
     ## Coefficients:
     ##                  Estimate Std. Error t value Pr(>|t|)    
-    ## (Intercept)      8.436791   0.049452 170.604  < 2e-16 ***
-    ## bedrooms        -0.023794   0.008397  -2.834  0.00461 ** 
-    ## bathrooms        0.182758   0.005995  30.483  < 2e-16 ***
-    ## living_area      0.600369   0.007249  82.819  < 2e-16 ***
-    ## lot_size         0.029067   0.002456  11.835  < 2e-16 ***
-    ## downtown_dist   -0.034930   0.001019 -34.284  < 2e-16 ***
-    ## condo           -0.065813   0.006350 -10.365  < 2e-16 ***
-    ## townhouse       -0.099901   0.007170 -13.934  < 2e-16 ***
-    ## neighborhood_2  -0.327735   0.010262 -31.935  < 2e-16 ***
-    ## neighborhood_3  -0.314266   0.012059 -26.061  < 2e-16 ***
-    ## neighborhood_4   0.018517   0.015342   1.207  0.22746    
-    ## neighborhood_5  -0.160811   0.009814 -16.386  < 2e-16 ***
-    ## neighborhood_6  -0.383310   0.011361 -33.738  < 2e-16 ***
-    ## neighborhood_7  -0.189173   0.013010 -14.541  < 2e-16 ***
-    ## neighborhood_8  -0.435554   0.010520 -41.404  < 2e-16 ***
-    ## neighborhood_9  -0.338777   0.013775 -24.594  < 2e-16 ***
-    ## neighborhood_10 -0.425866   0.011858 -35.915  < 2e-16 ***
-    ## neighborhood_11 -0.212172   0.012399 -17.112  < 2e-16 ***
-    ## neighborhood_12 -0.482208   0.011643 -41.415  < 2e-16 ***
-    ## neighborhood_13 -0.612347   0.014824 -41.307  < 2e-16 ***
-    ## neighborhood_14 -0.332129   0.012948 -25.651  < 2e-16 ***
-    ## neighborhood_15 -0.529689   0.012725 -41.625  < 2e-16 ***
-    ## neighborhood_16 -0.207629   0.010640 -19.514  < 2e-16 ***
-    ## neighborhood_17 -0.021011   0.011557  -1.818  0.06907 .  
-    ## neighborhood_18 -0.166906   0.010382 -16.077  < 2e-16 ***
-    ## neighborhood_19  0.064088   0.012731   5.034 4.84e-07 ***
-    ## neighborhood_20 -0.435233   0.010900 -39.931  < 2e-16 ***
-    ## neighborhood_21  0.062042   0.013626   4.553 5.31e-06 ***
-    ## neighborhood_22 -0.462511   0.039612 -11.676  < 2e-16 ***
-    ## neighborhood_23 -0.072716   0.016698  -4.355 1.34e-05 ***
-    ## neighborhood_24  0.091196   0.041941   2.174  0.02969 *  
+    ## (Intercept)     94.106641   5.929289  15.871  < 2e-16 ***
+    ## bedrooms        -0.014173   0.008347  -1.698  0.08953 .  
+    ## bathrooms        0.184609   0.005948  31.035  < 2e-16 ***
+    ## living_area      0.584003   0.007251  80.540  < 2e-16 ***
+    ## lot_size         0.033952   0.002449  13.866  < 2e-16 ***
+    ## downtown_dist   -0.044160   0.001119 -39.450  < 2e-16 ***
+    ## longitude        0.383294   0.061343   6.248 4.22e-10 ***
+    ## latitude        -1.447952   0.078303 -18.492  < 2e-16 ***
+    ## condo           -0.061432   0.006302  -9.748  < 2e-16 ***
+    ## townhouse       -0.099941   0.007112 -14.053  < 2e-16 ***
+    ## neighborhood_2  -0.404181   0.011516 -35.097  < 2e-16 ***
+    ## neighborhood_3  -0.246649   0.012804 -19.263  < 2e-16 ***
+    ## neighborhood_4   0.032218   0.015556   2.071  0.03836 *  
+    ## neighborhood_5  -0.086402   0.010487  -8.239  < 2e-16 ***
+    ## neighborhood_6  -0.303462   0.018345 -16.542  < 2e-16 ***
+    ## neighborhood_7  -0.284903   0.013899 -20.498  < 2e-16 ***
+    ## neighborhood_8  -0.303923   0.013631 -22.297  < 2e-16 ***
+    ## neighborhood_9  -0.345714   0.014757 -23.428  < 2e-16 ***
+    ## neighborhood_10 -0.517086   0.014966 -34.550  < 2e-16 ***
+    ## neighborhood_11 -0.142654   0.016353  -8.723  < 2e-16 ***
+    ## neighborhood_12 -0.277996   0.018730 -14.843  < 2e-16 ***
+    ## neighborhood_13 -0.466528   0.016511 -28.256  < 2e-16 ***
+    ## neighborhood_14 -0.161126   0.020726  -7.774 7.91e-15 ***
+    ## neighborhood_15 -0.571895   0.015615 -36.624  < 2e-16 ***
+    ## neighborhood_16 -0.097357   0.014517  -6.707 2.04e-11 ***
+    ## neighborhood_17  0.014507   0.011801   1.229  0.21896    
+    ## neighborhood_18 -0.106298   0.012861  -8.265  < 2e-16 ***
+    ## neighborhood_19  0.052064   0.012854   4.050 5.13e-05 ***
+    ## neighborhood_20 -0.388182   0.015242 -25.468  < 2e-16 ***
+    ## neighborhood_21  0.074063   0.013656   5.423 5.91e-08 ***
+    ## neighborhood_22 -0.138655   0.043578  -3.182  0.00147 ** 
+    ## neighborhood_23 -0.137182   0.016961  -8.088 6.36e-16 ***
+    ## neighborhood_24  0.132321   0.041863   3.161  0.00158 ** 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
-    ## Residual standard error: 0.2187 on 23176 degrees of freedom
-    ## Multiple R-squared:  0.7721, Adjusted R-squared:  0.7718 
-    ## F-statistic:  2617 on 30 and 23176 DF,  p-value: < 2.2e-16
+    ## Residual standard error: 0.2169 on 23174 degrees of freedom
+    ## Multiple R-squared:  0.7758, Adjusted R-squared:  0.7755 
+    ## F-statistic:  2506 on 32 and 23174 DF,  p-value: < 2.2e-16
 
 ``` r
 # linear regression prediction and error
@@ -189,7 +191,7 @@ rmse_lm <- sqrt(sum((exp(pred_lm) - test$price)^2)/length(test$price))
 rmse_lm
 ```
 
-    ## [1] 93424.88
+    ## [1] 92470.04
 
 ``` r
 # plot
@@ -235,7 +237,7 @@ rmse_xgb <- caret::RMSE(test_y, pred_xgb)
 rmse_xgb
 ```
 
-    ## [1] 87721.23
+    ## [1] 83745.88
 
 ``` r
 # plot
@@ -247,11 +249,11 @@ abline(coef = c(0, 1), c = 'red')
 
 # Comparison
 
-XGBoost results in a 6% reduction in RMSE.
+XGBoost results in a 9% reduction in RMSE.
 
 ``` r
 # performance comparison
 1 - rmse_xgb/rmse_lm
 ```
 
-    ## [1] 0.06105061
+    ## [1] 0.09434581
