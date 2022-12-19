@@ -4,7 +4,7 @@ House prices are a common project topic for data science learners. I've attempte
 
 ## Data Collection and Preparation
 -  [Web scraping](scrape.md)
--  [Cleaning](https://github.com/sheacon/nashville_real_estate/blob/main/data/2_cleaned/clean_data.Rmd)
+-  [Cleaning](data/2_cleaned/clean_data.Rmd)
 
 ## Exploratory Data Analysis
 - Understand data, visualize trends, and identify potential features
