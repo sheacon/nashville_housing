@@ -5,9 +5,8 @@ output: github_document
 ---
 
 ```{r, message=FALSE}
-# packages
-library(xgboost) #for fitting the xgboost model
-library(caret) # data prep and model fitting
+# markdown-wide packages
+
 ```
 
 # Data
@@ -37,6 +36,7 @@ for(i in 2:num_hoods) {
   colnames(df)[ncol(df)] <- paste0('neighborhood_', i) 
   }
 ```
+
 
 ```{r}
 # subset to desired variables
@@ -68,8 +68,6 @@ df <- subset(df,select = -c(zpid
 
 ```{r}
 # a little additional lot size cleaning
-df <- df[!df$lot_size == 0,]
-df <- df[!df$lot_size == 1,]
 # lot size should be at least as large as living area
 df$lot_size[df$lot_size < df$living_area] <- df$living_area[df$lot_size < df$living_area]
 ```
@@ -81,6 +79,11 @@ df$lot_size[df$lot_size < df$living_area] <- df$living_area[df$lot_size < df$liv
 Linear regression models are well-understood and easily explained. They serve as a good baseline model in a regression task to gut-check more sophisticated approaches.
 
 The target variable distribution is right skewed, as expected with home prices. The log transformation does a decent job of normalizing, which is more appropriate for a linear model. Log transformations are also applied to the skewed features.
+
+```{r}
+summary(df$price)
+```
+
 
 ```{r}
 d = density(df$price)
@@ -100,17 +103,21 @@ df$living_area <- log(df$living_area)
 df$lot_size <- log(df$lot_size)
 ```
 
+We split our data in train/validate/test sets. The train dataset is used for fitting our models. Validate is used for comparing models. While train and validate will be used multiple times, our final test set is used only once to estimate real-world performance.
+
 ```{r}
-# train/test split
+# train/validate/test split
+library(splitTools)
 set.seed(20221217)
 
-# 80/20
-parts = caret::createDataPartition(df$price, p = .8, list = F)
-train = df[parts, ]
-test = df[-parts, ]
+# 80/10/10
+inds <- splitTools::partition(df$price, p = c(train = 0.6, valid = 0.1, test = 0.1))
+str(inds)
 
-dim(train)
-dim(test)
+train <- df[inds$train, ]
+valid <- df[inds$valid, ]
+test <- df[inds$test, ]
+
 ```
 
 
@@ -120,23 +127,61 @@ model_lm = lm(log(price) ~ ., data=train)
 summary(model_lm)
 ```
 
+It is good practice to check for multicollinearity in the predictors for a linear model, as the presence of relationships between the predictors can make coefficients and their p-values unreliable. Here, we have some severe variance inflaction factor scores for variables having to do with location.
+
+Given that our primary interest is in prediction performance, rather than the independent relationship between each predictor and the price target, we can leave this issue unaddressed.
+
 ```{r}
-# linear regression prediction and error
-pred_lm <- predict(model_lm, newdata = test)
-rmse_lm <- sqrt(sum((exp(pred_lm) - test$price)^2)/length(test$price))
+# check for multicollinearity in our predictors
+library(car) # variance inflation factor
+vif <- car::vif(model_lm) # variance inflation factor
+vif[vif > 5] # severe
+```
+
+In our diagnostic plots, we're assessing the assumptions we've made in a linear model.
+- In the Residuals vs Fitted plot, we're seeing a stable goodness of fit for most of the fitted value range, with some issues at the tails. In particular, the spread of residuals noticeably shifts at the upper end. There are also clear outliers.
+- In our Normal QQ-plot, we're seeing a deviation that indicates non-normality in our response variable. We addressed this problem with a log transformation of price, but the tails are still fat.
+- The Scale-Location plot mainly serves to confirm the concerns about heteroskedasticity at higher prices.
+- The Residuals vs Leverage plot reveals a relationship between our errors and the leverage, or degree of influence of our points. Interestingly there are clusters of leverage with decreasing spread of residuals. Here it appears that our higher-leverage observations are not causing problems with our fit.
+
+```{r}
+# linear regression diagnostic plots
+par(mfrow=c(2,2))
+plot(model_lm)
+```
+
+
+```{r}
+# linear regression prediction and root mean squared error
+pred_lm <- predict(model_lm, newdata = valid)
+rmse_lm <- sqrt(sum((exp(pred_lm) - valid$price)^2)/length(valid$price))
 rmse_lm
 
 ```
 
+In this plot of actual vs predicted, the model performs better for lower cost housing.
+
+Over $700,000 the model appears to underestimate prices. Only 8% of the houses are in this range. For more expensive houses, there are likely characteristics we don't have in our data that capture some of their value. Think luxury features like hardwood floors, expensive lighting fixtures, ensuite bathrooms, etc.
+
 ```{r}
 # plot
-plot(test$price, exp(pred_lm))
+plot(valid$price, exp(pred_lm))
 abline(coef = c(0, 1), c = 'red')
+sum(df$price > 700000)/length(df$price)
 ```
 
 ## XGBoost
 
-XGBoost belongs to a class of models popular throughout many industries because of its performance on a variety problems. It is a decision-tree-based ensemble algorithm that uses the gradient boosting framework. Most boosting algorithms consist of iteratively learning weak classifiers to reduce residuals. A gradient-boosted trees model generalizes this method by allowing optimization of an arbitrary differentiable loss function.
+```{r}
+# xgboost package
+library(xgboost) 
+```
+
+
+XGBoost belongs to a class of models popular throughout many industries because of superior performance on a variety problems. Its benefits include capturing non-linear relationships, detecing complex interactions, and robustness to outliers and other data issues.
+
+An XGBoost model consists of many weak classifiers trained iteratively to reduce residuals, also known as boosting. This decision-tree based ensemble algorithm uses the gradient boosting framework, which allows for flexibility in loss function selection.
+
 
 ```{r}
 # additional xgboost data formatting
@@ -145,11 +190,11 @@ XGBoost belongs to a class of models popular throughout many industries because 
 train_x = data.matrix(train[, -1])
 train_y = train[,1]
 # test
-test_x = data.matrix(test[, -1])
-test_y = test[,1]
+valid_x = data.matrix(valid[, -1])
+valid_y = valid[,1]
 # final format for xgboost
 xgb_train = xgb.DMatrix(data = train_x, label = train_y)
-xgb_test = xgb.DMatrix(data = test_x, label = test_y)
+xgb_valid = xgb.DMatrix(data = valid_x, label = valid_y)
 ```
 
 ```{r}
@@ -158,26 +203,55 @@ model_xgb = xgb.train(data = xgb_train, max.depth = 3, nrounds = 350)
 ```
 
 ```{r}
-# xgb prediction and error
-pred_xgb <- predict(model_xgb, newdata = test_x)
-rmse_xgb <- caret::RMSE(test_y, pred_xgb)
+# xgb prediction and root mean squared error
+pred_xgb <- predict(model_xgb, newdata = valid_x)
+rmse_xgb <- sqrt(sum((pred_xgb - valid$price)^2)/length(valid$price))
 rmse_xgb
 ```
 
+XGBoost results in a 12% reduction in RMSE.
+
+Although not as severe, it is still underestimating more expensive homes.
+
 ```{r}
 # plot
-plot(test$price, pred_xgb)
+plot(valid$price, pred_xgb)
 abline(coef = c(0, 1), c = 'red')
+1 - rmse_xgb/rmse_lm # performance comparison
 ```
+# Test
 
-
-# Comparison
-
-XGBoost results in a 9% reduction in RMSE.
+Once we've settled on our modeling decisions, we can train our test model on all the non-test data and assess real-world performance on the test set. I'm not ready to do this yet.
 
 ```{r}
-# performance comparison
-1 - rmse_xgb/rmse_lm
+# test model training
+
+# model_test = model(price ~ ., data=(train + valid))
 ```
+
+
+```{r}
+# final model prediction and root mean squared error
+
+# pred_test <- predict(model_test, newdata = test)
+# rmse_test <- sqrt(sum(pred_test - test$price)^2)/length(test$price))
+# rmse_test
+```
+
+# Final Model
+
+When it's all said and done, we can train our final model on all the data we have. Then we're ready to use our model to price some houses!
+
+```{r}
+# final model training
+
+# model_final = model(price ~ ., data=df)
+```
+
+
+
+
+
+
 
 

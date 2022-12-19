@@ -3,9 +3,7 @@ Modeling
 Shea Conaway
 
 ``` r
-# packages
-library(xgboost) #for fitting the xgboost model
-library(caret) # data prep and model fitting
+# markdown-wide packages
 ```
 
 # Data
@@ -65,8 +63,6 @@ df <- subset(df,select = -c(zpid
 
 ``` r
 # a little additional lot size cleaning
-df <- df[!df$lot_size == 0,]
-df <- df[!df$lot_size == 1,]
 # lot size should be at least as large as living area
 df$lot_size[df$lot_size < df$living_area] <- df$living_area[df$lot_size < df$living_area]
 ```
@@ -85,12 +81,19 @@ is more appropriate for a linear model. Log transformations are also
 applied to the skewed features.
 
 ``` r
+summary(df$price)
+```
+
+    ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+    ##   62000  255000  335000  388684  452500 1449000
+
+``` r
 d = density(df$price)
 plot(d, main = 'price')
 polygon(d, col='gray')
 ```
 
-![](modeling_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+![](modeling_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
 
 ``` r
 d_log = density(log(df$price))
@@ -98,7 +101,7 @@ plot(d_log, main = 'price')
 polygon(d_log, col='gray')
 ```
 
-![](modeling_files/figure-gfm/unnamed-chunk-6-2.png)<!-- -->
+![](modeling_files/figure-gfm/unnamed-chunk-7-2.png)<!-- -->
 
 ``` r
 # feature log transformations
@@ -108,25 +111,31 @@ df$living_area <- log(df$living_area)
 df$lot_size <- log(df$lot_size)
 ```
 
+We split our data in train/validate/test sets. The train dataset is used
+for fitting our models. Validate is used for comparing models. While
+train and validate will be used multiple times, our final test set is
+used only once to estimate real-world performance.
+
 ``` r
-# train/test split
+# train/validate/test split
+library(splitTools)
 set.seed(20221217)
 
-# 80/20
-parts = caret::createDataPartition(df$price, p = .8, list = F)
-train = df[parts, ]
-test = df[-parts, ]
-
-dim(train)
+# 80/10/10
+inds <- splitTools::partition(df$price, p = c(train = 0.6, valid = 0.1, test = 0.1))
+str(inds)
 ```
 
-    ## [1] 23207    33
+    ## List of 3
+    ##  $ train: int [1:21762] 1 4 5 6 7 8 9 10 11 14 ...
+    ##  $ valid: int [1:3632] 2 12 13 26 34 37 75 89 96 106 ...
+    ##  $ test : int [1:3634] 3 15 27 32 42 45 46 49 50 61 ...
 
 ``` r
-dim(test)
+train <- df[inds$train, ]
+valid <- df[inds$valid, ]
+test <- df[inds$test, ]
 ```
-
-    ## [1] 5801   33
 
 ``` r
 # linear model training
@@ -140,76 +149,150 @@ summary(model_lm)
     ## 
     ## Residuals:
     ##      Min       1Q   Median       3Q      Max 
-    ## -1.28740 -0.12458  0.00355  0.13620  1.25628 
+    ## -1.18276 -0.12323  0.00418  0.13476  1.20313 
     ## 
     ## Coefficients:
     ##                  Estimate Std. Error t value Pr(>|t|)    
-    ## (Intercept)     94.106641   5.929289  15.871  < 2e-16 ***
-    ## bedrooms        -0.014173   0.008347  -1.698  0.08953 .  
-    ## bathrooms        0.184609   0.005948  31.035  < 2e-16 ***
-    ## living_area      0.584003   0.007251  80.540  < 2e-16 ***
-    ## lot_size         0.033952   0.002449  13.866  < 2e-16 ***
-    ## downtown_dist   -0.044160   0.001119 -39.450  < 2e-16 ***
-    ## longitude        0.383294   0.061343   6.248 4.22e-10 ***
-    ## latitude        -1.447952   0.078303 -18.492  < 2e-16 ***
-    ## condo           -0.061432   0.006302  -9.748  < 2e-16 ***
-    ## townhouse       -0.099941   0.007112 -14.053  < 2e-16 ***
-    ## neighborhood_2  -0.404181   0.011516 -35.097  < 2e-16 ***
-    ## neighborhood_3  -0.246649   0.012804 -19.263  < 2e-16 ***
-    ## neighborhood_4   0.032218   0.015556   2.071  0.03836 *  
-    ## neighborhood_5  -0.086402   0.010487  -8.239  < 2e-16 ***
-    ## neighborhood_6  -0.303462   0.018345 -16.542  < 2e-16 ***
-    ## neighborhood_7  -0.284903   0.013899 -20.498  < 2e-16 ***
-    ## neighborhood_8  -0.303923   0.013631 -22.297  < 2e-16 ***
-    ## neighborhood_9  -0.345714   0.014757 -23.428  < 2e-16 ***
-    ## neighborhood_10 -0.517086   0.014966 -34.550  < 2e-16 ***
-    ## neighborhood_11 -0.142654   0.016353  -8.723  < 2e-16 ***
-    ## neighborhood_12 -0.277996   0.018730 -14.843  < 2e-16 ***
-    ## neighborhood_13 -0.466528   0.016511 -28.256  < 2e-16 ***
-    ## neighborhood_14 -0.161126   0.020726  -7.774 7.91e-15 ***
-    ## neighborhood_15 -0.571895   0.015615 -36.624  < 2e-16 ***
-    ## neighborhood_16 -0.097357   0.014517  -6.707 2.04e-11 ***
-    ## neighborhood_17  0.014507   0.011801   1.229  0.21896    
-    ## neighborhood_18 -0.106298   0.012861  -8.265  < 2e-16 ***
-    ## neighborhood_19  0.052064   0.012854   4.050 5.13e-05 ***
-    ## neighborhood_20 -0.388182   0.015242 -25.468  < 2e-16 ***
-    ## neighborhood_21  0.074063   0.013656   5.423 5.91e-08 ***
-    ## neighborhood_22 -0.138655   0.043578  -3.182  0.00147 ** 
-    ## neighborhood_23 -0.137182   0.016961  -8.088 6.36e-16 ***
-    ## neighborhood_24  0.132321   0.041863   3.161  0.00158 ** 
+    ## (Intercept)     97.745581   6.060261  16.129  < 2e-16 ***
+    ## bedrooms        -0.009329   0.008538  -1.093  0.27457    
+    ## bathrooms        0.185869   0.006113  30.407  < 2e-16 ***
+    ## living_area      0.577855   0.007429  77.787  < 2e-16 ***
+    ## lot_size         0.031893   0.002515  12.683  < 2e-16 ***
+    ## downtown_dist   -0.044007   0.001137 -38.710  < 2e-16 ***
+    ## longitude        0.414216   0.062850   6.591 4.48e-11 ***
+    ## latitude        -1.472723   0.079236 -18.587  < 2e-16 ***
+    ## condo           -0.062745   0.006419  -9.775  < 2e-16 ***
+    ## townhouse       -0.107654   0.007321 -14.705  < 2e-16 ***
+    ## neighborhood_2  -0.407485   0.011756 -34.661  < 2e-16 ***
+    ## neighborhood_3  -0.239006   0.013121 -18.215  < 2e-16 ***
+    ## neighborhood_4   0.019676   0.015845   1.242  0.21434    
+    ## neighborhood_5  -0.088929   0.010707  -8.306  < 2e-16 ***
+    ## neighborhood_6  -0.316788   0.018726 -16.917  < 2e-16 ***
+    ## neighborhood_7  -0.289468   0.014258 -20.302  < 2e-16 ***
+    ## neighborhood_8  -0.298727   0.013871 -21.536  < 2e-16 ***
+    ## neighborhood_9  -0.347913   0.015205 -22.881  < 2e-16 ***
+    ## neighborhood_10 -0.527059   0.015296 -34.458  < 2e-16 ***
+    ## neighborhood_11 -0.141440   0.016654  -8.493  < 2e-16 ***
+    ## neighborhood_12 -0.288369   0.019056 -15.133  < 2e-16 ***
+    ## neighborhood_13 -0.461339   0.016595 -27.800  < 2e-16 ***
+    ## neighborhood_14 -0.177319   0.021053  -8.423  < 2e-16 ***
+    ## neighborhood_15 -0.576850   0.016024 -36.000  < 2e-16 ***
+    ## neighborhood_16 -0.098605   0.014782  -6.670 2.61e-11 ***
+    ## neighborhood_17  0.023912   0.012047   1.985  0.04717 *  
+    ## neighborhood_18 -0.104295   0.013082  -7.972 1.63e-15 ***
+    ## neighborhood_19  0.054666   0.013228   4.132 3.60e-05 ***
+    ## neighborhood_20 -0.393750   0.015539 -25.340  < 2e-16 ***
+    ## neighborhood_21  0.077522   0.014253   5.439 5.41e-08 ***
+    ## neighborhood_22 -0.162077   0.040318  -4.020 5.84e-05 ***
+    ## neighborhood_23 -0.156763   0.017796  -8.809  < 2e-16 ***
+    ## neighborhood_24  0.122519   0.040936   2.993  0.00277 ** 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
-    ## Residual standard error: 0.2169 on 23174 degrees of freedom
-    ## Multiple R-squared:  0.7758, Adjusted R-squared:  0.7755 
-    ## F-statistic:  2506 on 32 and 23174 DF,  p-value: < 2.2e-16
+    ## Residual standard error: 0.2152 on 21729 degrees of freedom
+    ## Multiple R-squared:  0.7781, Adjusted R-squared:  0.7778 
+    ## F-statistic:  2382 on 32 and 21729 DF,  p-value: < 2.2e-16
+
+It is good practice to check for multicollinearity in the predictors for
+a linear model, as the presence of relationships between the predictors
+can make coefficients and their p-values unreliable. Here, we have some
+severe variance inflaction factor scores for variables having to do with
+location.
+
+Given that our primary interest is in prediction performance, rather
+than the independent relationship between each predictor and the price
+target, we can leave this issue unaddressed.
 
 ``` r
-# linear regression prediction and error
-pred_lm <- predict(model_lm, newdata = test)
-rmse_lm <- sqrt(sum((exp(pred_lm) - test$price)^2)/length(test$price))
+# check for multicollinearity in our predictors
+library(car) # variance inflation factor
+```
+
+    ## Loading required package: carData
+
+``` r
+vif <- car::vif(model_lm) # variance inflation factor
+vif[vif > 5] # severe
+```
+
+    ##   downtown_dist       longitude        latitude  neighborhood_2  neighborhood_6 
+    ##        7.907548       18.444286       15.022280        5.865642       11.544099 
+    ##  neighborhood_8 neighborhood_10 neighborhood_11 neighborhood_12 neighborhood_14 
+    ##        5.032633       12.242618        8.444304        7.040319        6.906078 
+    ## neighborhood_20 
+    ##        5.708727
+
+In our diagnostic plots, we’re assessing the assumptions we’ve made in a
+linear model. - In the Residuals vs Fitted plot, we’re seeing a stable
+goodness of fit for most of the fitted value range, with some issues at
+the tails. In particular, the spread of residuals noticeably shifts at
+the upper end. There are also clear outliers. - In our Normal QQ-plot,
+we’re seeing a deviation that indicates non-normality in our response
+variable. We addressed this problem with a log transformation of price,
+but the tails are still fat. - The Scale-Location plot mainly serves to
+confirm the concerns about heteroskedasticity at higher prices. - The
+Residuals vs Leverage plot reveals a relationship between our errors and
+the leverage, or degree of influence of our points. Interestingly there
+are clusters of leverage with decreasing spread of residuals. Here it
+appears that our higher-leverage observations are not causing problems
+with our fit.
+
+``` r
+# linear regression diagnostic plots
+par(mfrow=c(2,2))
+plot(model_lm)
+```
+
+![](modeling_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
+
+``` r
+# linear regression prediction and root mean squared error
+pred_lm <- predict(model_lm, newdata = valid)
+rmse_lm <- sqrt(sum((exp(pred_lm) - valid$price)^2)/length(valid$price))
 rmse_lm
 ```
 
-    ## [1] 92470.04
+    ## [1] 96678.3
+
+In this plot of actual vs predicted, the model performs better for lower
+cost housing.
+
+Over \$700,000 the model appears to underestimate prices. Only 8% of the
+houses are in this range. For more expensive houses, there are likely
+characteristics we don’t have in our data that capture some of their
+value. Think luxury features like hardwood floors, expensive lighting
+fixtures, ensuite bathrooms, etc.
 
 ``` r
 # plot
-plot(test$price, exp(pred_lm))
+plot(valid$price, exp(pred_lm))
 abline(coef = c(0, 1), c = 'red')
 ```
 
-![](modeling_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
+![](modeling_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
+
+``` r
+sum(df$price > 700000)/length(df$price)
+```
+
+    ## [1] 0.07820036
 
 ## XGBoost
 
+``` r
+# xgboost package
+library(xgboost) 
+```
+
 XGBoost belongs to a class of models popular throughout many industries
-because of its performance on a variety problems. It is a
-decision-tree-based ensemble algorithm that uses the gradient boosting
-framework. Most boosting algorithms consist of iteratively learning weak
-classifiers to reduce residuals. A gradient-boosted trees model
-generalizes this method by allowing optimization of an arbitrary
-differentiable loss function.
+because of superior performance on a variety problems. Its benefits
+include capturing non-linear relationships, detecing complex
+interactions, and robustness to outliers and other data issues.
+
+An XGBoost model consists of many weak classifiers trained iteratively
+to reduce residuals, also known as boosting. This decision-tree based
+ensemble algorithm uses the gradient boosting framework, which allows
+for flexibility in loss function selection.
 
 ``` r
 # additional xgboost data formatting
@@ -218,11 +301,11 @@ differentiable loss function.
 train_x = data.matrix(train[, -1])
 train_y = train[,1]
 # test
-test_x = data.matrix(test[, -1])
-test_y = test[,1]
+valid_x = data.matrix(valid[, -1])
+valid_y = valid[,1]
 # final format for xgboost
 xgb_train = xgb.DMatrix(data = train_x, label = train_y)
-xgb_test = xgb.DMatrix(data = test_x, label = test_y)
+xgb_valid = xgb.DMatrix(data = valid_x, label = valid_y)
 ```
 
 ``` r
@@ -231,29 +314,60 @@ model_xgb = xgb.train(data = xgb_train, max.depth = 3, nrounds = 350)
 ```
 
 ``` r
-# xgb prediction and error
-pred_xgb <- predict(model_xgb, newdata = test_x)
-rmse_xgb <- caret::RMSE(test_y, pred_xgb)
+# xgb prediction and root mean squared error
+pred_xgb <- predict(model_xgb, newdata = valid_x)
+rmse_xgb <- sqrt(sum((pred_xgb - valid$price)^2)/length(valid$price))
 rmse_xgb
 ```
 
-    ## [1] 83745.88
+    ## [1] 85450.26
+
+XGBoost results in a 12% reduction in RMSE.
+
+Although not as severe, it is still underestimating more expensive
+homes.
 
 ``` r
 # plot
-plot(test$price, pred_xgb)
+plot(valid$price, pred_xgb)
 abline(coef = c(0, 1), c = 'red')
 ```
 
-![](modeling_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
-
-# Comparison
-
-XGBoost results in a 9% reduction in RMSE.
+![](modeling_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
 
 ``` r
-# performance comparison
-1 - rmse_xgb/rmse_lm
+1 - rmse_xgb/rmse_lm # performance comparison
 ```
 
-    ## [1] 0.09434581
+    ## [1] 0.1161382
+
+# Test
+
+Once we’ve settled on our modeling decisions, we can train our test
+model on all the non-test data and assess real-world performance on the
+test set. I’m not ready to do this yet.
+
+``` r
+# test model training
+
+# model_test = model(price ~ ., data=(train + valid))
+```
+
+``` r
+# final model prediction and root mean squared error
+
+# pred_test <- predict(model_test, newdata = test)
+# rmse_test <- sqrt(sum(pred_test - test$price)^2)/length(test$price))
+# rmse_test
+```
+
+# Final Model
+
+When it’s all said and done, we can train our final model on all the
+data we have. Then we’re ready to use our model to price some houses!
+
+``` r
+# final model training
+
+# model_final = model(price ~ ., data=df)
+```
