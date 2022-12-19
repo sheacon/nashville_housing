@@ -1,6 +1,6 @@
 # Nashville Real Estate
 
-House prices are a common project topic for data science learners. I've attempted to make this more interesting by collecting my own real-world data for my current city. This is a data collection and exploratory data analysis project for an academic course that I've since expanded with predictive modeling.
+House prices are a common project topic for data science learners. I've attempted to make this more interesting by collecting my own real-world data for my current city. This was an EDA-only project for an academic course that I've since expanded with predictive modeling.
 
 ## Data Collection and Preparation
 -  [Web scraping](https://github.com/sheacon/nashville_real_estate/blob/main/scrape.md)
