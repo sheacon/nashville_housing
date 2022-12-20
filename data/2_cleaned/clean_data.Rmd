@@ -17,7 +17,7 @@ library(geodist)
 
 ```{r, warning = FALSE}
 # import data
-data <- read_csv('../data_processing/processed_data.csv',show_col_types = FALSE)
+data <- read_csv('../1_processed/processed_data.csv',show_col_types = FALSE)
 ```
 
 ```{r}
@@ -195,7 +195,7 @@ nashclean <-
 # date_listed / days_on_market / date_sold_previous
 
 # import price history data
-zprice <- read_csv('../data_processing/price_tax_history.csv',show_col_types = FALSE)
+zprice <- read_csv('../1_processed/price_tax_history.csv',show_col_types = FALSE)
 
 # remove tax history and rental info
 zprice <-
@@ -207,7 +207,8 @@ zprice <-
 zprice <-
   zprice %>%
   mutate(date_listed = as.Date(0, origin = '1900-01-01')
-         ,date_sold_previous = as.Date(0, origin = '1900-01-01'))
+         ,date_sold_previous = as.Date(0, origin = '1900-01-01')
+         ,previous_price = NA)
 
 # loop over all rows
 for (row in 1:nrow(zprice)) {
@@ -226,6 +227,7 @@ for (row in 1:nrow(zprice)) {
       zprice[row,92] <- zprice[row,col]
     } else if (zprice[row,col+1] == 'Sold') { # date_sold_previous
       zprice[row,93] <- zprice[row,col]
+      zprice[row,94] <- zprice[row,col+2]
     }
   }
 }
@@ -295,6 +297,7 @@ nashclean <-
          ,date_listed
          ,days_on_market
          ,date_sold_previous
+         ,previous_price
          ,age
          ,year_built
          ,description

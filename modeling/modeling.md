@@ -3,7 +3,7 @@ Modeling
 Shea Conaway
 
 ``` r
-# markdown-wide packages
+# packages
 ```
 
 # Data
@@ -35,6 +35,17 @@ for(i in 2:num_hoods) {
 ```
 
 ``` r
+# time variables
+
+# basic time variable
+# captures inflation in nashville market
+df$time <- as.numeric(as.Date(df$date_sold) - as.Date('2021-11-11'))
+
+# days between
+df$days_since_previous_sale <- as.numeric(as.Date(df$date_sold) - as.Date(df$date_sold_previous))
+```
+
+``` r
 # subset to desired variables
 df <- subset(df,select = -c(zpid
                    ,price_sqft
@@ -62,9 +73,25 @@ df <- subset(df,select = -c(zpid
 ```
 
 ``` r
-# a little additional lot size cleaning
-# lot size should be at least as large as living area
-df$lot_size[df$lot_size < df$living_area] <- df$living_area[df$lot_size < df$living_area]
+# feature transformations and imputations
+
+# imputation
+df$days_on_market[is.na(df$days_on_market)] <- mean(df$days_on_market, na.rm = TRUE)
+df$days_since_previous_sale[is.na(df$days_since_previous_sale)] <- 0 # never sold before
+df$previous_price[is.na(df$previous_price)] <- df$price[is.na(df$previous_price)] # fill na's
+df$previous_price[df$previous_price > df$price] <- df$price[df$previous_price > df$price] # price should increase
+df$lot_size[df$lot_size < df$living_area] <- df$living_area[df$lot_size < df$living_area] # lot size at least sqft
+
+# log transformations
+df$bedrooms <- log(df$bedrooms)
+df$bathrooms <- log(df$bathrooms)
+df$living_area <- log(df$living_area)
+df$lot_size <- log(df$lot_size)
+
+# sqrt transformations
+df$days_on_market <- sqrt(df$days_on_market)
+df$age <- sqrt(df$age)
+df$previous_price <- sqrt(df$previous_price)
 ```
 
 # Model
@@ -93,7 +120,7 @@ plot(d, main = 'price')
 polygon(d, col='gray')
 ```
 
-![](modeling_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+![](modeling_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
 
 ``` r
 d_log = density(log(df$price))
@@ -101,22 +128,7 @@ plot(d_log, main = 'Log Price')
 polygon(d_log, col='gray')
 ```
 
-![](modeling_files/figure-gfm/unnamed-chunk-7-2.png)<!-- -->
-
-``` r
-# feature transformations and imputations
-
-# log transformations
-df$bedrooms <- log(df$bedrooms)
-df$bathrooms <- log(df$bathrooms)
-df$living_area <- log(df$living_area)
-df$lot_size <- log(df$lot_size)
-
-# sqrt transformation
-df$days_on_market[is.na(df$days_on_market)] <- mean(df$days_on_market, na.rm = TRUE)
-df$days_on_market <- sqrt(df$days_on_market)
-df$age <- sqrt(df$age)
-```
+![](modeling_files/figure-gfm/unnamed-chunk-8-2.png)<!-- -->
 
 We split our data in train/validate/test sets. The train dataset is used
 for fitting our models. Validate is used for comparing models. While
@@ -156,51 +168,54 @@ summary(model_lm)
     ## 
     ## Residuals:
     ##      Min       1Q   Median       3Q      Max 
-    ## -1.13348 -0.11776  0.00243  0.12927  1.22531 
+    ## -1.12772 -0.09313  0.00243  0.10033  1.11912 
     ## 
     ## Coefficients:
-    ##                   Estimate Std. Error t value Pr(>|t|)    
-    ## (Intercept)      1.014e+02  5.905e+00  17.167  < 2e-16 ***
-    ## bedrooms        -4.285e-03  8.316e-03  -0.515  0.60635    
-    ## bathrooms        1.414e-01  6.255e-03  22.612  < 2e-16 ***
-    ## living_area      5.735e-01  7.292e-03  78.641  < 2e-16 ***
-    ## days_on_market  -2.039e-02  7.456e-04 -27.350  < 2e-16 ***
-    ## age             -1.583e-02  6.956e-04 -22.758  < 2e-16 ***
-    ## lot_size         5.315e-02  2.643e-03  20.108  < 2e-16 ***
-    ## downtown_dist   -4.880e-02  1.122e-03 -43.481  < 2e-16 ***
-    ## longitude        4.510e-01  6.122e-02   7.368 1.80e-13 ***
-    ## latitude        -1.480e+00  7.719e-02 -19.177  < 2e-16 ***
-    ## condo           -6.396e-02  6.252e-03 -10.230  < 2e-16 ***
-    ## townhouse       -8.728e-02  7.194e-03 -12.132  < 2e-16 ***
-    ## neighborhood_2  -4.186e-01  1.146e-02 -36.525  < 2e-16 ***
-    ## neighborhood_3  -2.705e-01  1.290e-02 -20.974  < 2e-16 ***
-    ## neighborhood_4  -1.672e-02  1.552e-02  -1.077  0.28134    
-    ## neighborhood_5  -1.141e-01  1.049e-02 -10.871  < 2e-16 ***
-    ## neighborhood_6  -3.360e-01  1.825e-02 -18.412  < 2e-16 ***
-    ## neighborhood_7  -3.006e-01  1.389e-02 -21.637  < 2e-16 ***
-    ## neighborhood_8  -3.307e-01  1.358e-02 -24.356  < 2e-16 ***
-    ## neighborhood_9  -3.750e-01  1.486e-02 -25.228  < 2e-16 ***
-    ## neighborhood_10 -5.415e-01  1.492e-02 -36.292  < 2e-16 ***
-    ## neighborhood_11 -1.271e-01  1.623e-02  -7.834 4.93e-15 ***
-    ## neighborhood_12 -2.969e-01  1.856e-02 -16.001  < 2e-16 ***
-    ## neighborhood_13 -4.908e-01  1.622e-02 -30.258  < 2e-16 ***
-    ## neighborhood_14 -1.745e-01  2.050e-02  -8.510  < 2e-16 ***
-    ## neighborhood_15 -5.811e-01  1.560e-02 -37.240  < 2e-16 ***
-    ## neighborhood_16 -1.198e-01  1.441e-02  -8.311  < 2e-16 ***
-    ## neighborhood_17  3.866e-02  1.175e-02   3.291  0.00100 ***
-    ## neighborhood_18 -1.260e-01  1.276e-02  -9.871  < 2e-16 ***
-    ## neighborhood_19  4.192e-02  1.290e-02   3.250  0.00116 ** 
-    ## neighborhood_20 -4.091e-01  1.514e-02 -27.015  < 2e-16 ***
-    ## neighborhood_21  8.198e-02  1.388e-02   5.906 3.55e-09 ***
-    ## neighborhood_22 -1.639e-01  3.926e-02  -4.174 3.00e-05 ***
-    ## neighborhood_23 -1.685e-01  1.733e-02  -9.720  < 2e-16 ***
-    ## neighborhood_24  1.091e-01  3.987e-02   2.736  0.00622 ** 
+    ##                            Estimate Std. Error t value Pr(>|t|)    
+    ## (Intercept)               8.312e+01  4.988e+00  16.664  < 2e-16 ***
+    ## bedrooms                  8.273e-03  7.015e-03   1.179 0.238307    
+    ## bathrooms                 1.229e-01  5.279e-03  23.284  < 2e-16 ***
+    ## living_area               4.255e-01  6.569e-03  64.771  < 2e-16 ***
+    ## days_on_market           -7.523e-03  6.493e-04 -11.587  < 2e-16 ***
+    ## previous_price            8.376e-04  1.355e-05  61.804  < 2e-16 ***
+    ## age                      -1.166e-02  6.076e-04 -19.198  < 2e-16 ***
+    ## lot_size                  5.756e-02  2.236e-03  25.746  < 2e-16 ***
+    ## downtown_dist            -3.758e-02  9.592e-04 -39.176  < 2e-16 ***
+    ## longitude                 3.775e-01  5.163e-02   7.310 2.76e-13 ***
+    ## latitude                 -1.139e+00  6.526e-02 -17.458  < 2e-16 ***
+    ## condo                    -5.904e-02  5.273e-03 -11.196  < 2e-16 ***
+    ## townhouse                -9.385e-02  6.080e-03 -15.435  < 2e-16 ***
+    ## neighborhood_2           -2.941e-01  9.916e-03 -29.657  < 2e-16 ***
+    ## neighborhood_3           -1.561e-01  1.109e-02 -14.076  < 2e-16 ***
+    ## neighborhood_4           -1.847e-03  1.310e-02  -0.141 0.887833    
+    ## neighborhood_5           -5.468e-02  8.926e-03  -6.126 9.16e-10 ***
+    ## neighborhood_6           -2.421e-01  1.549e-02 -15.624  < 2e-16 ***
+    ## neighborhood_7           -1.946e-01  1.183e-02 -16.450  < 2e-16 ***
+    ## neighborhood_8           -2.126e-01  1.165e-02 -18.241  < 2e-16 ***
+    ## neighborhood_9           -2.400e-01  1.277e-02 -18.788  < 2e-16 ***
+    ## neighborhood_10          -3.970e-01  1.285e-02 -30.908  < 2e-16 ***
+    ## neighborhood_11          -6.059e-02  1.372e-02  -4.416 1.01e-05 ***
+    ## neighborhood_12          -2.009e-01  1.576e-02 -12.741  < 2e-16 ***
+    ## neighborhood_13          -3.522e-01  1.393e-02 -25.289  < 2e-16 ***
+    ## neighborhood_14          -1.152e-01  1.735e-02  -6.641 3.19e-11 ***
+    ## neighborhood_15          -4.285e-01  1.343e-02 -31.907  < 2e-16 ***
+    ## neighborhood_16          -5.025e-02  1.224e-02  -4.105 4.07e-05 ***
+    ## neighborhood_17           3.722e-02  9.904e-03   3.757 0.000172 ***
+    ## neighborhood_18          -5.668e-02  1.084e-02  -5.228 1.73e-07 ***
+    ## neighborhood_19           3.641e-02  1.088e-02   3.348 0.000816 ***
+    ## neighborhood_20          -2.898e-01  1.294e-02 -22.391  < 2e-16 ***
+    ## neighborhood_21           8.052e-02  1.170e-02   6.882 6.08e-12 ***
+    ## neighborhood_22          -9.243e-02  3.313e-02  -2.790 0.005276 ** 
+    ## neighborhood_23          -1.107e-01  1.465e-02  -7.562 4.14e-14 ***
+    ## neighborhood_24           1.769e-01  3.362e-02   5.261 1.44e-07 ***
+    ## time                      2.331e-04  4.020e-06  57.983  < 2e-16 ***
+    ## days_since_previous_sale  1.425e-05  6.474e-07  22.008  < 2e-16 ***
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
-    ## Residual standard error: 0.2095 on 21727 degrees of freedom
-    ## Multiple R-squared:  0.7897, Adjusted R-squared:  0.7893 
-    ## F-statistic:  2399 on 34 and 21727 DF,  p-value: < 2.2e-16
+    ## Residual standard error: 0.1766 on 21724 degrees of freedom
+    ## Multiple R-squared:  0.8506, Adjusted R-squared:  0.8503 
+    ## F-statistic:  3342 on 37 and 21724 DF,  p-value: < 2.2e-16
 
 It is good practice to check for multicollinearity in the predictors for
 a linear model, as the presence of relationships between the predictors
@@ -225,21 +240,21 @@ vif[vif > 5] # severe
 ```
 
     ##   downtown_dist       longitude        latitude  neighborhood_2  neighborhood_6 
-    ##        8.129839       18.456485       15.037132        5.878043       11.565420 
+    ##        8.354738       18.476390       15.125233        6.193188       11.730566 
     ##  neighborhood_8 neighborhood_10 neighborhood_11 neighborhood_12 neighborhood_14 
-    ##        5.086193       12.284257        8.453308        7.042106        6.906328 
-    ## neighborhood_20 
-    ##        5.718117
+    ##        5.271122       12.814833        8.507649        7.151156        6.958939 
+    ## neighborhood_16 neighborhood_20 
+    ##        5.065349        5.877659
 
 In our diagnostic plots, we’re assessing the assumptions we’ve made in a
 linear model. - In the Residuals vs Fitted plot, we’re seeing a stable
 goodness of fit for most of the fitted value range, with some issues at
 the tails. Also, the spread of residuals shifts at the upper end,
 representing some homoskedasticity. - In the Normal QQ-plot, we’re
-seeing decent normality in the residuals but evidence of some non-linear
-characteristics not captured by our model. - The Cook’s distance plot
-checks for observations that have high influence on the model fit. Here
-there are three observations worthy of investigation.
+seeing strong evidence of non-linear characteristics not captured by our
+model based on the non-normality of the residuals. - The Cook’s distance
+plot checks for observations that have high influence on the model fit.
+Here there are three observations worthy of investigation.
 
 ``` r
 # linear regression diagnostic plots
@@ -254,7 +269,7 @@ rmse_lm <- sqrt(sum((exp(pred_lm) - valid$price)^2)/length(valid$price))
 rmse_lm
 ```
 
-    ## [1] 95309.27
+    ## [1] 79819.37
 
 In this plot of actual vs predicted, the model performs better for lower
 cost housing.
@@ -322,9 +337,9 @@ rmse_xgb <- sqrt(sum((pred_xgb - valid$price)^2)/length(valid$price))
 rmse_xgb
 ```
 
-    ## [1] 80350.32
+    ## [1] 59983.95
 
-XGBoost results in a 16% reduction in RMSE.
+XGBoost results in a 25% reduction in RMSE compared to the linear fit.
 
 Although not as pronounced as the linear fit, the XGBoost model is still
 underestimating more expensive homes.
@@ -341,7 +356,7 @@ abline(coef = c(0, 1), c = 'red')
 1 - rmse_xgb/rmse_lm # performance comparison
 ```
 
-    ## [1] 0.1569517
+    ## [1] 0.2485038
 
 ``` r
 # prep analysis dataframe
@@ -350,22 +365,22 @@ xgb_analysis$ae <- abs(xgb_analysis$valid.price - xgb_analysis$pred_xgb) # absol
 xgb_analysis$ae_p <- xgb_analysis$ae/xgb_analysis$valid.price
 ```
 
-The mean absolute error for predicted price is \$53k or 15% of true home
-price. The median figures are \$35k and 11%.
+The mean absolute error for predicted price is \$36k or 10% of true home
+price. The median figures are \$22k and 7%.
 
 ``` r
 summary(xgb_analysis$ae)
 ```
 
     ##     Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
-    ##      6.4  16170.1  35361.2  53210.7  69894.5 807892.2
+    ##     11.7   9436.9  22425.4  36000.8  43950.3 787900.2
 
 ``` r
 summary(xgb_analysis$ae_p)
 ```
 
     ##      Min.   1st Qu.    Median      Mean   3rd Qu.      Max. 
-    ## 0.0000157 0.0475862 0.1060771 0.1456514 0.1906463 1.8836322
+    ## 0.0000394 0.0297687 0.0658148 0.0982233 0.1207899 2.2455532
 
 ## SAINT (Work in Progress)
 

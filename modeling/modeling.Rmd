@@ -5,8 +5,7 @@ output: github_document
 ---
 
 ```{r, message=FALSE}
-# markdown-wide packages
-
+# packages
 ```
 
 # Data
@@ -44,69 +43,9 @@ for(i in 2:num_hoods) {
 # captures inflation in nashville market
 df$time <- as.numeric(as.Date(df$date_sold) - as.Date('2021-11-11'))
 
-# days since previous sale
+# days between
 df$days_since_previous_sale <- as.numeric(as.Date(df$date_sold) - as.Date(df$date_sold_previous))
 
-```
-
-
-```{r}
-library(dplyr)
-library(readr)
-library(lubridate)
-library(stringr)
-library(tidyr)
-
-# import price history data
-zprice <- read_csv('../data/1_processed/price_tax_history.csv',show_col_types = FALSE)
-
-# remove tax history and rental info
-zprice <-
-  zprice %>%
-  select(-matches('tax_history')) %>%
-  select(-matches('rental'))
-
-# initialize
-zprice <-
-  zprice %>%
-  mutate(date_listed = as.Date(0, origin = '1900-01-01')
-         ,date_sold_previous = as.Date(0, origin = '1900-01-01')
-         ,previous_price = NA)
-
-# loop over all rows
-for (row in 1:nrow(zprice)) {
-
-  # loop over all columns
-  for (i in 25:1) {
-  
-    # column location to search for listed date
-    col = i*3 +2
-    
-    # replace null
-    if (is.na(zprice[row,col+1])) {zprice[row,col+1] <- 'Skip'}
-    
-    # pull date if listed event
-    if (zprice[row,col+1] == 'Listed for sale') { # date_listed
-      zprice[row,92] <- zprice[row,col]
-    } else if (zprice[row,col+1] == 'Sold') { # date_sold_previous
-      zprice[row,93] <- zprice[row,col]
-      zprice[row,94] <- zprice[row,col+2]
-    }
-  }
-}
-
-# remove placeholder values
-zprice$date_sold_previous[zprice$date_sold_previous == as.Date('1900-01-01')] <- NA
-zprice$date_listed[zprice$date_listed == as.Date('1900-01-01')] <- NA
-
-# remove price history
-zprice <-
-  zprice %>%
-  select(-matches('price_history')) %>%
-  select(-c('date_listed','date_sold_previous'))
-
-# join
-df <- df %>% left_join(zprice, by = 'zpid')
 ```
 
 ```{r}
