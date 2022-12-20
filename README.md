@@ -1,8 +1,8 @@
 # Nashville Real Estate
 
-House prices are a common project topic for data science learners. I've attempted to make this more interesting by collecting my own real-world data for my current city. This was an EDA-only project for an academic course, which I've since expanded with some predictive modeling.
-- Local data was collected from Zillow using a custom scraper
-- Extensive exploratory data analysis was performed
+House prices are a common project topic for data science learners. I've attempted to make this more interesting by collecting my own real-world data for my current city.
+- Local data was collected from Zillow using a custom scraper. Includes richer features than Kaggle datasets.
+- Extensive cleaning, feature engineering, and exploratory data analysis was performed
 - Linear, tree-based, and novel transformer models have been applied and compared for price prediction
 
 ![zillow_search_area](readme_images/zillow_search_area.png)
