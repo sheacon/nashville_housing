@@ -29,7 +29,7 @@ df$townhouse <- ifelse(df$home_type == 'TOWNHOUSE', 1, 0)
 # default neighborhood 1 (Green Hills / Forest Hills / Belle Meade)
 neighborhoods <- unique(df$neighborhood)
 num_hoods <- length(neighborhoods) # 24
-# loop enconding
+# loop encoding
 for(i in 2:num_hoods) {
   new <- ifelse(df$neighborhood == neighborhoods[i], 1, 0)
   df[ , ncol(df) + 1] <- new
@@ -45,9 +45,9 @@ df <- subset(df,select = -c(zpid
                    ,home_type
                    ,date_sold
                    ,date_listed
-                   ,days_on_market
+                   #,days_on_market
                    ,date_sold_previous
-                   ,age
+                   #,age
                    ,year_built
                    ,description
                    ,photo_count
@@ -96,11 +96,18 @@ polygon(d_log, col='gray')
 ```
 
 ```{r}
-# feature log transformations
+# feature transformations and imputations
+
+# log transformations
 df$bedrooms <- log(df$bedrooms)
 df$bathrooms <- log(df$bathrooms)
 df$living_area <- log(df$living_area)
 df$lot_size <- log(df$lot_size)
+
+# sqrt transformation
+df$days_on_market[is.na(df$days_on_market)] <- mean(df$days_on_market, na.rm = TRUE)
+df$days_on_market <- sqrt(df$days_on_market)
+df$age <- sqrt(df$age)
 ```
 
 We split our data in train/validate/test sets. The train dataset is used for fitting our models. Validate is used for comparing models. While train and validate will be used multiple times, our final test set is used only once to estimate real-world performance.
@@ -139,15 +146,14 @@ vif[vif > 5] # severe
 ```
 
 In our diagnostic plots, we're assessing the assumptions we've made in a linear model.
-- In the Residuals vs Fitted plot, we're seeing a stable goodness of fit for most of the fitted value range, with some issues at the tails. In particular, the spread of residuals noticeably shifts at the upper end. There are also clear outliers.
-- In our Normal QQ-plot, we're seeing a deviation that indicates non-normality in our response variable. We addressed this problem with a log transformation of price, but the tails are still fat.
-- The Scale-Location plot mainly serves to confirm the concerns about heteroskedasticity at higher prices.
-- The Residuals vs Leverage plot reveals a relationship between our errors and the leverage, or degree of influence of our points. Interestingly there are clusters of leverage with decreasing spread of residuals. Here it appears that our higher-leverage observations are not causing problems with our fit.
+- In the Residuals vs Fitted plot, we're seeing a stable goodness of fit for most of the fitted value range, with some issues at the tails. Also, the spread of residuals shifts at the upper end, representing some homoskedasticity.
+- In the Normal QQ-plot, we're seeing decent normality in the residuals but evidence of some non-linear characteristics not captured by our model.
+- The Cook's distance plot checks for observations that have high influence on the model fit. Here there are three observations worthy of investigation.
 
-```{r}
+```{r, fig.width = 10}
 # linear regression diagnostic plots
-par(mfrow=c(2,2))
-plot(model_lm)
+dev.new(width=100, height=50, unit="px")
+plot(model_lm, which = c(1,2,4))
 ```
 
 
@@ -209,9 +215,9 @@ rmse_xgb <- sqrt(sum((pred_xgb - valid$price)^2)/length(valid$price))
 rmse_xgb
 ```
 
-XGBoost results in a 12% reduction in RMSE.
+XGBoost results in a 16% reduction in RMSE.
 
-Although not as severe, it is still underestimating more expensive homes.
+Although not as pronounced as the linear fit, the XGBoost model is still underestimating more expensive homes.
 
 ```{r}
 # plot
@@ -219,6 +225,21 @@ plot(valid$price, pred_xgb, main = 'XGBoost Predicted vs Actuals', xlab = 'Actua
 abline(coef = c(0, 1), c = 'red')
 1 - rmse_xgb/rmse_lm # performance comparison
 ```
+```{r}
+# prep analysis dataframe
+xgb_analysis <- data.frame(1:length(valid$price),valid$price, pred_xgb)
+xgb_analysis$ae <- abs(xgb_analysis$valid.price - xgb_analysis$pred_xgb) # absolute error
+xgb_analysis$ae_p <- xgb_analysis$ae/xgb_analysis$valid.price
+```
+
+The mean absolute error for predicted price is \$53k or 15% of true home price. The median figures are \$35k and 11%.
+
+```{r}
+summary(xgb_analysis$ae)
+summary(xgb_analysis$ae_p)
+```
+
+
 
 ## SAINT (Work in Progress)
 ### Self-Attention and Intersample Attention Transformer
