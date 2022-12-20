@@ -7,7 +7,7 @@ House prices are a common project topic for data science learners. I've attempte
 
 ![zillow_search_area](readme_images/zillow_search_area.png)
 ![map](readme_images/map.png)
-![log_price](readme_images/log_price.png)
+![time_series](readme_images/time_series.png)
 ![xgboost](readme_images/xgboost.png)
 
 ## Data Collection and Preparation
