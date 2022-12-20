@@ -37,6 +37,77 @@ for(i in 2:num_hoods) {
   }
 ```
 
+```{r}
+# time variables
+
+# basic time variable
+# captures inflation in nashville market
+df$time <- as.numeric(as.Date(df$date_sold) - as.Date('2021-11-11'))
+
+# days since previous sale
+df$days_since_previous_sale <- as.numeric(as.Date(df$date_sold) - as.Date(df$date_sold_previous))
+
+```
+
+
+```{r}
+library(dplyr)
+library(readr)
+library(lubridate)
+library(stringr)
+library(tidyr)
+
+# import price history data
+zprice <- read_csv('../data/1_processed/price_tax_history.csv',show_col_types = FALSE)
+
+# remove tax history and rental info
+zprice <-
+  zprice %>%
+  select(-matches('tax_history')) %>%
+  select(-matches('rental'))
+
+# initialize
+zprice <-
+  zprice %>%
+  mutate(date_listed = as.Date(0, origin = '1900-01-01')
+         ,date_sold_previous = as.Date(0, origin = '1900-01-01')
+         ,previous_price = NA)
+
+# loop over all rows
+for (row in 1:nrow(zprice)) {
+
+  # loop over all columns
+  for (i in 25:1) {
+  
+    # column location to search for listed date
+    col = i*3 +2
+    
+    # replace null
+    if (is.na(zprice[row,col+1])) {zprice[row,col+1] <- 'Skip'}
+    
+    # pull date if listed event
+    if (zprice[row,col+1] == 'Listed for sale') { # date_listed
+      zprice[row,92] <- zprice[row,col]
+    } else if (zprice[row,col+1] == 'Sold') { # date_sold_previous
+      zprice[row,93] <- zprice[row,col]
+      zprice[row,94] <- zprice[row,col+2]
+    }
+  }
+}
+
+# remove placeholder values
+zprice$date_sold_previous[zprice$date_sold_previous == as.Date('1900-01-01')] <- NA
+zprice$date_listed[zprice$date_listed == as.Date('1900-01-01')] <- NA
+
+# remove price history
+zprice <-
+  zprice %>%
+  select(-matches('price_history')) %>%
+  select(-c('date_listed','date_sold_previous'))
+
+# join
+df <- df %>% left_join(zprice, by = 'zpid')
+```
 
 ```{r}
 # subset to desired variables
@@ -67,9 +138,25 @@ df <- subset(df,select = -c(zpid
 ```
 
 ```{r}
-# a little additional lot size cleaning
-# lot size should be at least as large as living area
-df$lot_size[df$lot_size < df$living_area] <- df$living_area[df$lot_size < df$living_area]
+# feature transformations and imputations
+
+# imputation
+df$days_on_market[is.na(df$days_on_market)] <- mean(df$days_on_market, na.rm = TRUE)
+df$days_since_previous_sale[is.na(df$days_since_previous_sale)] <- 0 # never sold before
+df$previous_price[is.na(df$previous_price)] <- df$price[is.na(df$previous_price)] # fill na's
+df$previous_price[df$previous_price > df$price] <- df$price[df$previous_price > df$price] # price should increase
+df$lot_size[df$lot_size < df$living_area] <- df$living_area[df$lot_size < df$living_area] # lot size at least sqft
+
+# log transformations
+df$bedrooms <- log(df$bedrooms)
+df$bathrooms <- log(df$bathrooms)
+df$living_area <- log(df$living_area)
+df$lot_size <- log(df$lot_size)
+
+# sqrt transformations
+df$days_on_market <- sqrt(df$days_on_market)
+df$age <- sqrt(df$age)
+df$previous_price <- sqrt(df$previous_price)
 ```
 
 # Model
@@ -93,21 +180,6 @@ polygon(d, col='gray')
 d_log = density(log(df$price))
 plot(d_log, main = 'Log Price')
 polygon(d_log, col='gray')
-```
-
-```{r}
-# feature transformations and imputations
-
-# log transformations
-df$bedrooms <- log(df$bedrooms)
-df$bathrooms <- log(df$bathrooms)
-df$living_area <- log(df$living_area)
-df$lot_size <- log(df$lot_size)
-
-# sqrt transformation
-df$days_on_market[is.na(df$days_on_market)] <- mean(df$days_on_market, na.rm = TRUE)
-df$days_on_market <- sqrt(df$days_on_market)
-df$age <- sqrt(df$age)
 ```
 
 We split our data in train/validate/test sets. The train dataset is used for fitting our models. Validate is used for comparing models. While train and validate will be used multiple times, our final test set is used only once to estimate real-world performance.
@@ -147,7 +219,7 @@ vif[vif > 5] # severe
 
 In our diagnostic plots, we're assessing the assumptions we've made in a linear model.
 - In the Residuals vs Fitted plot, we're seeing a stable goodness of fit for most of the fitted value range, with some issues at the tails. Also, the spread of residuals shifts at the upper end, representing some homoskedasticity.
-- In the Normal QQ-plot, we're seeing decent normality in the residuals but evidence of some non-linear characteristics not captured by our model.
+- In the Normal QQ-plot, we're seeing strong evidence of non-linear characteristics not captured by our model based on the non-normality of the residuals.
 - The Cook's distance plot checks for observations that have high influence on the model fit. Here there are three observations worthy of investigation.
 
 ```{r, fig.width = 10}
@@ -215,7 +287,7 @@ rmse_xgb <- sqrt(sum((pred_xgb - valid$price)^2)/length(valid$price))
 rmse_xgb
 ```
 
-XGBoost results in a 16% reduction in RMSE.
+XGBoost results in a 25% reduction in RMSE compared to the linear fit.
 
 Although not as pronounced as the linear fit, the XGBoost model is still underestimating more expensive homes.
 
@@ -232,7 +304,7 @@ xgb_analysis$ae <- abs(xgb_analysis$valid.price - xgb_analysis$pred_xgb) # absol
 xgb_analysis$ae_p <- xgb_analysis$ae/xgb_analysis$valid.price
 ```
 
-The mean absolute error for predicted price is \$53k or 15% of true home price. The median figures are \$35k and 11%.
+The mean absolute error for predicted price is \$36k or 10% of true home price. The median figures are \$22k and 7%.
 
 ```{r}
 summary(xgb_analysis$ae)
