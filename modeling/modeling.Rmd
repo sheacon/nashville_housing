@@ -104,6 +104,12 @@ df$previous_price <- sqrt(df$previous_price)
 
 Linear regression models are well-understood and easily explained. They serve as a good baseline model in a regression task to gut-check more sophisticated approaches.
 
+Linear regression assumptions
+- Linearity: the relationship between the feature set and the target variable is linear
+- Homoscedasticity: the variance of the residuals is constant
+- Independence: all observations are independent of one another
+- Normality: the distribution of the target variable is normal
+
 The target variable distribution is right skewed, as expected with home prices. The log transformation does a decent job of normalizing, which is more appropriate for a linear model. Log transformations are also applied to the skewed features.
 
 ```{r}
