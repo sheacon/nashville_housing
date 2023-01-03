@@ -16,6 +16,9 @@ House prices are a common project topic for data science learners. I've attempte
 
 ![xgboost](readme_images/xgboost.png)
 
+<br>
+<br>
+
 ## Data Collection and Preparation
 -  [Web scraping](scrape.md)
 -  [Cleaning](data/2_cleaned/clean_data.Rmd)
