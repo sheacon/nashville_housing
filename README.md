@@ -5,9 +5,15 @@ House prices are a common project topic for data science learners. I've attempte
 - Extensive cleaning, feature engineering, and exploratory data analysis was performed
 - Linear, tree-based, and novel transformer models have been applied and compared for price prediction
 
+<br>
+<br>
+
 ![zillow_search_area](readme_images/zillow_search_area.png)
+
 ![map](readme_images/map.png)
+
 ![time_series](readme_images/time_series.png)
+
 ![xgboost](readme_images/xgboost.png)
 
 ## Data Collection and Preparation
